@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #09090b;
+  --foreground: #fafafa;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Leaflet specific overrides for dark mode */
+.leaflet-container {
+  background: #18181b !important;
+  font-family: inherit !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: #27272a !important;
+  color: #fafafa !important;
+  border-color: #3f3f46 !important;
+}
+.leaflet-control-zoom a:hover {
+  background-color: #3f3f46 !important;
+}
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: #18181b !important;
+  color: #fafafa !important;
+}
