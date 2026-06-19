@@ -1,0 +1,74 @@
+============================================================
+Model: Severity Classifier
+============================================================
+Cross-Validation Accuracy (5-fold, train split):  0.9842  ±  0.0037
+Hold-out Test Accuracy:                           0.9853
+
+Classification Report (hold-out set):
+              precision    recall  f1-score   support
+
+         Low       0.98      1.00      0.99       524
+      Medium       1.00      0.98      0.99       790
+        High       0.97      0.98      0.97       298
+    Critical       0.88      0.96      0.92        23
+
+    accuracy                           0.99      1635
+   macro avg       0.96      0.98      0.97      1635
+weighted avg       0.99      0.99      0.99      1635
+
+Confusion Matrix (rows = actual, cols = predicted):
+Labels: ['Low', 'Medium', 'High', 'Critical']
+[[524   0   0   0]
+ [  9 773   8   0]
+ [  0   3 292   3]
+ [  0   0   1  22]]
+
+============================================================
+Model: Priority Classifier
+============================================================
+Cross-Validation Accuracy (5-fold, train split):  1.0000  ±  0.0000
+Hold-out Test Accuracy:                           1.0000
+
+Classification Report (hold-out set):
+              precision    recall  f1-score   support
+
+         Low       1.00      1.00      1.00       629
+        High       1.00      1.00      1.00      1006
+
+    accuracy                           1.00      1635
+   macro avg       1.00      1.00      1.00      1635
+weighted avg       1.00      1.00      1.00      1635
+
+Confusion Matrix (rows = actual, cols = predicted):
+Labels: ['Low', 'High']
+[[ 629    0]
+ [   0 1006]]
+
+
+Feature Importance — Severity Classifier:
+  priority_enc               0.2375  ███████████
+  requires_road_closure      0.2128  ██████████
+  corridor_enc               0.0908  ████
+  is_peak_hour               0.0839  ████
+  event_cause_enc            0.0830  ████
+  hour                       0.0599  ██
+  event_type_enc             0.0588  ██
+  has_junction               0.0556  ██
+  dayofweek                  0.0432  ██
+  is_weekend                 0.0324  █
+  zone_enc                   0.0242  █
+  month                      0.0179  
+
+Feature Importance — Priority Classifier:
+  priority_enc               0.7072  ███████████████████████████████████
+  corridor_enc               0.2677  █████████████
+  has_junction               0.0055  
+  zone_enc                   0.0051  
+  event_cause_enc            0.0048  
+  month                      0.0026  
+  hour                       0.0025  
+  requires_road_closure      0.0022  
+  dayofweek                  0.0013  
+  event_type_enc             0.0004  
+  is_peak_hour               0.0004  
+  is_weekend                 0.0003  

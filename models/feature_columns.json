@@ -1,0 +1,14 @@
+[
+  "event_type_enc",
+  "event_cause_enc",
+  "priority_enc",
+  "requires_road_closure",
+  "is_peak_hour",
+  "is_weekend",
+  "has_junction",
+  "hour",
+  "dayofweek",
+  "month",
+  "corridor_enc",
+  "zone_enc"
+]
