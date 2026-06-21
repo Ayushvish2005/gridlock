@@ -227,6 +227,14 @@ export function IncidentTimeline({ incidents, simResult }: { incidents: Incident
                               Resolve
                             </button>
                           )}
+                          {incident.status?.toUpperCase() === 'RESOLVED' && !incident.id.toString().startsWith('sim-') && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('view-report', { detail: { id: incident.id } })); }}
+                              className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+                            >
+                              View Report
+                            </button>
+                          )}
                           <span className="text-[10px] text-slate-600">{formatRelativeTime(incident.created_at)}</span>
                         </div>
                       </div>

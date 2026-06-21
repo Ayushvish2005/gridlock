@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Search, FileText, CheckCircle, AlertTriangle, XCircle, Activity } from 'lucide-react';
@@ -7,8 +7,8 @@ import axios from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export function PostEventReport() {
-  const [incidentId, setIncidentId] = useState('');
+export function PostEventReport({ prefilledId }: { prefilledId?: string }) {
+  const [incidentId, setIncidentId] = useState(prefilledId || '');
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,9 +17,10 @@ export function PostEventReport() {
   const [actualBarricades, setActualBarricades] = useState('');
   const [actualDuration, setActualDuration] = useState('');
 
-  const fetchReport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!incidentId.trim()) return;
+  const fetchReport = async (e?: React.FormEvent, idToFetch?: string) => {
+    if (e) e.preventDefault();
+    const id = idToFetch || incidentId;
+    if (!id.toString().trim()) return;
 
     setLoading(true);
     setError('');
@@ -27,7 +28,7 @@ export function PostEventReport() {
     setReport(null);
 
     try {
-      const res = await axios.get(`${API_BASE}/analytics/post-event-report/${incidentId.trim()}`);
+      const res = await axios.get(`${API_BASE}/analytics/post-event-report/${id.toString().trim()}`);
       setReport(res.data);
       setActualOfficers(res.data.officers_deployed?.toString() || '0');
       setActualBarricades(res.data.barricades_deployed?.toString() || '0');
@@ -44,6 +45,13 @@ export function PostEventReport() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (prefilledId) {
+      setIncidentId(prefilledId);
+      fetchReport(undefined, prefilledId);
+    }
+  }, [prefilledId]);
 
   const submitDebrief = async (e: React.FormEvent) => {
     e.preventDefault();

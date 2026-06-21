@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [deploymentDetails, setDeploymentDetails] = useState<{posts: any[], barricadesPerPost: number} | null>(null);
   const [liveAlert, setLiveAlert] = useState<{message: string, severity: string} | null>(null);
+  const [reportIncidentId, setReportIncidentId] = useState<string>('');
 
   useEffect(() => {
     fetchData();
@@ -52,6 +53,13 @@ export default function Dashboard() {
       setDeploymentDetails(e.detail);
     };
     window.addEventListener('deployment-details', handleDeploymentDetails);
+    
+    const handleViewReport = (e: any) => {
+      setReportIncidentId(e.detail.id);
+      setActiveTab('reports');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('view-report', handleViewReport);
     
     setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
     const t = setInterval(() => setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false })), 1000);
@@ -74,6 +82,7 @@ export default function Dashboard() {
       ws.close();
       window.removeEventListener('simulate-incident', handleSimulate);
       window.removeEventListener('deployment-details', handleDeploymentDetails);
+      window.removeEventListener('view-report', handleViewReport);
     };
   }, []);
 
@@ -499,7 +508,7 @@ export default function Dashboard() {
         {/* REPORTS TAB */}
         {activeTab === 'reports' && (
           <div className="max-w-3xl mx-auto animate-fade-in-up">
-            <PostEventReport />
+            <PostEventReport prefilledId={reportIncidentId} />
           </div>
         )}
       </div>
