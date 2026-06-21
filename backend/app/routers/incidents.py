@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -136,7 +137,7 @@ def resolve_incident(incident_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Incident not found")
 
     incident.status = IncidentStatus.RESOLVED
-    incident.resolved_datetime = func.now()
+    incident.resolved_datetime = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Incident resolved successfully"}
 

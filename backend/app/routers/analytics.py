@@ -553,9 +553,13 @@ def submit_debrief(incident_id: int, request: DebriefRequest, db: Session = Depe
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
         
-    # In a full system, we would save these metrics to a GroundTruthMetrics table
-    # and trigger an asynchronous Apache Kafka event to retrain the scikit-learn models.
-    
+    # Update the incident with the actual duration if provided
+    if request.actual_duration_mins > 0:
+        if incident.created_at:
+            from datetime import timedelta
+            incident.resolved_datetime = incident.created_at + timedelta(minutes=request.actual_duration_mins)
+            db.commit()
+            
     variance_officers = request.actual_officers - (incident.officers_required or 0)
     variance_barricades = request.actual_barricades - (incident.barricades_required or 0)
     

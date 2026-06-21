@@ -57,11 +57,14 @@ export function PostEventReport({ prefilledId }: { prefilledId?: string }) {
     e.preventDefault();
     try {
       const res = await axios.post(`${API_BASE}/analytics/debrief/${incidentId.trim()}`, {
-        actual_officers: parseInt(actualOfficers),
-        actual_barricades: parseInt(actualBarricades),
-        actual_duration_mins: parseInt(actualDuration)
+        actual_officers: parseInt(actualOfficers) || 0,
+        actual_barricades: parseInt(actualBarricades) || 0,
+        actual_duration_mins: parseInt(actualDuration) || 0
       });
       setDebriefSuccess(res.data.message);
+      
+      // Auto-refresh report to show updated metrics
+      setTimeout(() => fetchReport(undefined, incidentId), 1000);
     } catch (err) {
       setError("Failed to submit debrief.");
     }
