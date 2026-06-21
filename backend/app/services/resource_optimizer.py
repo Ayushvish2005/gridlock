@@ -60,102 +60,63 @@ def allocate_resources(
         return {inc["id"]: 0 for inc in active_incidents}
 
     # ------------------------------------------------------------------
-    # Normalise risk scores (clamp negatives to 0)
+    # Normalise risk scores and demands
     # ------------------------------------------------------------------
     risks = {inc["id"]: max(0.0, float(inc["risk_score"])) for inc in active_incidents}
-    total_risk = sum(risks.values())
+    demands = {inc["id"]: int(inc.get("demand", 999999)) for inc in active_incidents}
+    allocations = {inc["id"]: 0 for inc in active_incidents}
+    
+    remaining_pool = max_officers
+    active_ids = [inc["id"] for inc in active_incidents if demands[inc["id"]] > 0]
+    
+    # Iterative allocation bounded by demand
+    while remaining_pool > 0 and active_ids:
+        total_risk = sum(risks[iid] for iid in active_ids)
+        
+        if total_risk == 0:
+            # If no risk differentiation, distribute 1 to each until empty
+            for iid in list(active_ids):
+                if remaining_pool > 0:
+                    allocations[iid] += 1
+                    demands[iid] -= 1
+                    remaining_pool -= 1
+                    if demands[iid] <= 0:
+                        active_ids.remove(iid)
+                else:
+                    break
+            continue
+            
+        # Calculate raw proportional allocation for this round
+        raw_alloc = {}
+        for iid in active_ids:
+            proportion = risks[iid] / total_risk
+            # Floor the proportional amount, bounded by remaining demand
+            amt = min(int(proportion * remaining_pool), demands[iid])
+            raw_alloc[iid] = amt
+            
+        total_allocated_this_round = sum(raw_alloc.values())
+        
+        # If proportional amounts were too small (all < 1), distribute 1 to highest risk
+        if total_allocated_this_round == 0:
+            active_ids.sort(key=lambda x: risks[x], reverse=True)
+            for iid in list(active_ids):
+                if remaining_pool > 0 and demands[iid] > 0:
+                    allocations[iid] += 1
+                    demands[iid] -= 1
+                    remaining_pool -= 1
+                    if demands[iid] <= 0:
+                        active_ids.remove(iid)
+                else:
+                    break
+            continue
+            
+        # Apply the computed allocations
+        for iid in list(active_ids):
+            amt = raw_alloc[iid]
+            allocations[iid] += amt
+            demands[iid] -= amt
+            remaining_pool -= amt
+            if demands[iid] <= 0:
+                active_ids.remove(iid)
 
-    # ------------------------------------------------------------------
-    # Proportional allocation (risk-weighted) -- deterministic & fast
-    # If all risks are 0, distribute evenly.
-    # ------------------------------------------------------------------
-    if total_risk == 0:
-        base = max_officers // len(active_incidents)
-        remainder = max_officers % len(active_incidents)
-        allocation = {}
-        for i, inc in enumerate(active_incidents):
-            allocation[inc["id"]] = base + (1 if i < remainder else 0)
-        return allocation
-
-    # Compute raw (fractional) proportions
-    raw: Dict[str, float] = {iid: (r / total_risk) * max_officers for iid, r in risks.items()}
-
-    # Floor to integers first
-    floored: Dict[str, int] = {iid: int(v) for iid, v in raw.items()}
-    remainder_pool = max_officers - sum(floored.values())
-
-    # Distribute remainder by largest fractional part; for equal risks this is round-robin
-    # Sort by fractional part DESC, then by id for determinism when fractions are equal
-    fractions = sorted(
-        active_incidents,
-        key=lambda inc: (raw[inc["id"]] - int(raw[inc["id"]]),),
-        reverse=True,
-    )
-    for i in range(remainder_pool):
-        floored[fractions[i % len(fractions)]["id"]] += 1
-
-    # ------------------------------------------------------------------
-    # LP solve for integer allocation closest to proportional target.
-    # NOTE: Disabled due to PuLP 4.x API incompatibilities that cause
-    # incorrect variable attachment. The proportional algorithm above is
-    # mathematically correct and passes all acceptance criteria.
-    # Re-enable by setting _USE_LP = True after upgrading to a stable solver.
-    # ------------------------------------------------------------------
-    _USE_LP = False
-    if _USE_LP:
-        try:
-            import pulp  # type: ignore
-
-            prob = pulp.LpProblem("officer_allocation", pulp.LpMinimize)
-
-            def _make_var(prob, name, lb, ub, cat):
-                try:
-                    return prob.add_variable(name, lowBound=lb, upBound=ub, cat=cat)
-                except AttributeError:
-                    return pulp.LpVariable(name, lowBound=lb, upBound=ub, cat=cat)
-
-            officers = {
-                inc["id"]: _make_var(prob, f"x_{i}", 0, max_officers, "Integer")
-                for i, inc in enumerate(active_incidents)
-            }
-            deviations = {
-                inc["id"]: _make_var(prob, f"d_{i}", 0, None, "Continuous")
-                for i, inc in enumerate(active_incidents)
-            }
-
-            prob += pulp.lpSum(deviations[iid] for iid in deviations)
-
-            for iid in officers:
-                t = raw[iid]
-                prob += deviations[iid] >= officers[iid] - t
-                prob += deviations[iid] >= t - officers[iid]
-
-            prob += pulp.lpSum(officers[iid] for iid in officers) <= max_officers
-
-            sorted_incs = sorted(active_incidents, key=lambda i: risks[i["id"]], reverse=True)
-            for k in range(len(sorted_incs) - 1):
-                a = sorted_incs[k]["id"]
-                b = sorted_incs[k + 1]["id"]
-                if risks[a] > risks[b]:
-                    prob += officers[a] >= officers[b]
-
-            try:
-                solver = pulp.COIN_CMD(msg=0)
-            except AttributeError:
-                solver = pulp.PULP_CBC_CMD(msg=0)  # type: ignore[attr-defined]
-
-            prob.solve(solver)
-
-            if pulp.LpStatus[prob.status] == "Optimal":
-                id_list = [inc["id"] for inc in active_incidents]
-                return {
-                    iid: int(round(officers[iid].varValue or 0))
-                    for iid in id_list
-                }
-
-        except ImportError:
-            pass
-        except Exception:
-            pass
-
-    return floored
+    return allocations

@@ -643,7 +643,8 @@ def get_resource_allocation(max_officers: int = Query(default=100), db: Session 
     for inc in active_incidents:
         incidents_list.append({
             "id": str(inc.id),
-            "risk_score": inc.impact_score or 0
+            "risk_score": inc.impact_score or 0,
+            "demand": inc.officers_required or 0
         })
         
     allocation = allocate_resources(incidents_list, max_officers)
