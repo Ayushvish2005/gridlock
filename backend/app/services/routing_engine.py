@@ -295,7 +295,19 @@ def calculate_route(
                 return result
 
             try:
-                path_nodes = nx.shortest_path(working_G, orig_node, dest_node, weight="length")
+                if closed_coords:
+                    cl_center = closed_coords[0]
+                    # Force a detour waypoint 1.5 * radius to the East
+                    R_deg = 500.0 / 111000.0 
+                    waypoint_lon = min(cl_center[1] + R_deg * 1.5, _BBOX["max_lon"])
+                    waypoint_node = ox.distance.nearest_nodes(
+                        working_G, X=waypoint_lon, Y=cl_center[0]
+                    )
+                    path1 = nx.shortest_path(working_G, orig_node, waypoint_node, weight="length")
+                    path2 = nx.shortest_path(working_G, waypoint_node, dest_node, weight="length")
+                    path_nodes = path1[:-1] + path2
+                else:
+                    path_nodes = nx.shortest_path(working_G, orig_node, dest_node, weight="length")
             except (nx.NetworkXNoPath, nx.NodeNotFound):
                 # Graph disconnected by closures — fall through to geometric fallback
                 result = _fallback_route(start_coords, end_coords, closed_coords)
