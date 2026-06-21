@@ -90,7 +90,7 @@ export default function Dashboard() {
     try {
       const [analyticsRes, incidentsRes] = await Promise.all([
         axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/analytics`),
-        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/incidents?status=ACTIVE`)
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/incidents`)
       ]);
       setAnalytics(analyticsRes.data);
       setIncidents(incidentsRes.data.slice(0, 30));
@@ -187,7 +187,7 @@ export default function Dashboard() {
                 <h3 className="font-bold text-sm text-white">Live Operations Map</h3>
               </div>
               <IncidentMap 
-                incidents={incidents} 
+                incidents={incidents.filter((inc: any) => inc.status === 'ACTIVE')} 
                 simResult={simResult}
                 selectedLocation={selectedLocation}
                 onMapClick={(lat, lng) => setSelectedLocation({lat, lng})} 
@@ -239,7 +239,7 @@ export default function Dashboard() {
                   <h3 className="font-bold text-sm text-white">Click map to select location</h3>
                 </div>
                 <IncidentMap 
-                  incidents={incidents} 
+                  incidents={incidents.filter((inc: any) => inc.status === 'ACTIVE')} 
                   simResult={simResult}
                   selectedLocation={selectedLocation}
                   onMapClick={(lat, lng) => {
