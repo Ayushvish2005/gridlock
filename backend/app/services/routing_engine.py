@@ -262,12 +262,12 @@ def calculate_route(
             import osmnx as ox  # type: ignore
             import networkx as nx  # type: ignore
 
-            # Build set of node IDs to exclude (within 1km of any closure)
+            # Build set of node IDs to exclude (within 250m of any closure)
             nodes_to_remove = set()
             for node, data in G.nodes(data=True):
                 node_coord = (float(data.get("y", 0)), float(data.get("x", 0)))
                 for cl in closed_coords:
-                    if _haversine(node_coord, cl) < 1000:  # 1km exclusion radius
+                    if _haversine(node_coord, cl) < 250:  # 250m exclusion radius
                         nodes_to_remove.add(node)
                         break
 
@@ -311,22 +311,6 @@ def calculate_route(
             if route:
                 route[0] = start_coords
                 route[-1] = end_coords
-
-            # Always insert a forced waypoint when closures are specified.
-            # This guarantees the detour path is materially longer (> 10%) than
-            # the unrestricted base route, regardless of whether the OSMnx
-            # algorithm naturally rerouted around the closure area.
-            # The waypoint at closure_centre + 0.1° (≈ 11 km) is always far
-            # from any closure (dist ≈ 0.2 deg >> 0.001) and within bbox.
-            if closed_coords:
-                cl_center = closed_coords[0]
-                detour_pt = (cl_center[0] + 0.1, cl_center[1] + 0.1)
-                detour_pt = (
-                    min(max(detour_pt[0], _BBOX["min_lat"]), _BBOX["max_lat"]),
-                    min(max(detour_pt[1], _BBOX["min_lon"]), _BBOX["max_lon"]),
-                )
-                mid_idx = max(1, len(route) // 2)
-                route = route[:mid_idx] + [detour_pt] + route[mid_idx:]
 
             _route_cache[cache_key] = route
             return route
