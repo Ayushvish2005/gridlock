@@ -13,7 +13,7 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   
   const [snappedBarricades, setSnappedBarricades] = useState<{lat: number, lng: number, name?: string, direction?: string}[]>([]);
-  const [diversionRoute, setDiversionRoute] = useState<{lat: number, lng: number}[] | null>(null);
+  const [diversionRoutes, setDiversionRoutes] = useState<{lat: number, lng: number}[][]>([]);
 
   const overlaysRef = useRef<any[]>([]);
 
@@ -78,7 +78,7 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
   useEffect(() => {
     if (!simResult || !selectedLocation) {
       setSnappedBarricades([]);
-      setDiversionRoute(null);
+      setDiversionRoutes([]);
       return;
     }
 
@@ -147,24 +147,32 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
       return snapped;
     };
 
-    const getDiversionRoute = async (centerLat: number, centerLng: number, radiusMeters: number) => {
+    const getDiversionRoutes = async (centerLat: number, centerLng: number, radiusMeters: number) => {
       const R_deg = radiusMeters / 111000;
-      const start = { lat: centerLat + R_deg * 1.2, lng: centerLng };
-      const end = { lat: centerLat - R_deg * 1.2, lng: centerLng };
+      
+      const pairs = [
+        // North to South
+        { start: { lat: centerLat + R_deg * 1.2, lng: centerLng }, end: { lat: centerLat - R_deg * 1.2, lng: centerLng } },
+        // East to West
+        { start: { lat: centerLat, lng: centerLng + R_deg * 1.2 }, end: { lat: centerLat, lng: centerLng - R_deg * 1.2 } }
+      ];
 
-      try {
-        const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/analytics/routing?start_lat=${start.lat}&start_lng=${start.lng}&end_lat=${end.lat}&end_lng=${end.lng}&closed_lat=${centerLat}&closed_lng=${centerLng}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.route && data.route.length > 0) {
-            return data.route.map((c: number[]) => ({lat: c[0], lng: c[1]}));
+      const routes = [];
+      for (const p of pairs) {
+        try {
+          const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/analytics/routing?start_lat=${p.start.lat}&start_lng=${p.start.lng}&end_lat=${p.end.lat}&end_lng=${p.end.lng}&closed_lat=${centerLat}&closed_lng=${centerLng}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.route && data.route.length > 0) {
+              routes.push(data.route.map((c: number[]) => ({lat: c[0], lng: c[1]})));
+            }
           }
+        } catch (e) {
+          console.error("Routing failed", e);
         }
-      } catch (e) {
-        console.error("Routing failed", e);
       }
-      return null;
+      return routes;
     };
 
     getIdealBarricades().then(points => {
@@ -174,11 +182,11 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
     });
 
     if (simResult.recommendations?.diversion_required) {
-      getDiversionRoute(selectedLocation.lat, selectedLocation.lng, radiusInMeters).then(route => {
-        if (route) setDiversionRoute(route);
+      getDiversionRoutes(selectedLocation.lat, selectedLocation.lng, radiusInMeters).then(routes => {
+        setDiversionRoutes(routes);
       });
     } else {
-      setDiversionRoute(null);
+      setDiversionRoutes([]);
     }
 
   }, [simResult, selectedLocation]);
@@ -334,33 +342,35 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
         });
       }
 
-      if (diversionRoute && diversionRoute.length > 0) {
-        const polyline = new window.mappls.Polyline({
-          map: mapInstance,
-          paths: diversionRoute,
-          strokeColor: '#3b82f6',
-          strokeOpacity: 0.9,
-          strokeWeight: 5
-        });
-        overlaysRef.current.push(polyline);
-
-        // Add Midpoint Diversion Info
-        const midIdx = Math.floor(diversionRoute.length / 2);
-        const midPoint = diversionRoute[midIdx];
-        if (midPoint) {
-            const divMarker = new window.mappls.Marker({
-                map: mapInstance,
-                position: { lat: midPoint.lat, lng: midPoint.lng },
-                html: `<div style="background-color: #2563eb; color: white; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; transform: translate(-50%, -50%);">
-                  ↪️ Diversion
-                </div>`
+      if (diversionRoutes.length > 0) {
+        diversionRoutes.forEach((route, idx) => {
+            const polyline = new window.mappls.Polyline({
+              map: mapInstance,
+              paths: route,
+              strokeColor: '#3b82f6',
+              strokeOpacity: 0.9,
+              strokeWeight: 5
             });
-            overlaysRef.current.push(divMarker);
-        }
+            overlaysRef.current.push(polyline);
+
+            // Add Midpoint Diversion Info for each route
+            const midIdx = Math.floor(route.length / 2);
+            const midPoint = route[midIdx];
+            if (midPoint) {
+                const divMarker = new window.mappls.Marker({
+                    map: mapInstance,
+                    position: { lat: midPoint.lat, lng: midPoint.lng },
+                    html: `<div style="background-color: #2563eb; color: white; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; transform: translate(-50%, -50%);">
+                      ↪️ Diversion
+                    </div>`
+                });
+                overlaysRef.current.push(divMarker);
+            }
+        });
       }
     }
 
-  }, [incidents, mapInstance, selectedLocation, simResult, snappedBarricades, diversionRoute]);
+  }, [incidents, mapInstance, selectedLocation, simResult, snappedBarricades, diversionRoutes]);
 
   if (!isScriptLoaded) {
     return <div className="h-full w-full flex items-center justify-center text-slate-400">Loading Mappls API...</div>;
