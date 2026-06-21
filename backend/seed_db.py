@@ -12,8 +12,15 @@ def seed_data():
         print("Database already seeded!")
         return
 
-    csv_file = "/home/ayush/Desktop/grodlock/Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv"
+    import os
+    # Find the CSV in the parent directory (root of the repo)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    csv_file = os.path.join(base_dir, "Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv")
     
+    if not os.path.exists(csv_file):
+        print(f"CSV file not found at {csv_file}! Cannot seed database.")
+        return
+        
     incidents_to_add = []
     try:
         with open(csv_file, newline='', encoding='utf-8') as f:

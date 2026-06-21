@@ -11,6 +11,10 @@ from app.routers import incidents
 from app.routers import analytics
 from dotenv import load_dotenv
 import os
+import threading
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from seed_db import seed_data
 
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
@@ -47,6 +51,16 @@ app.include_router(analytics.router)
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "AI Traffic Operations Platform API is running"}
+
+@app.get("/seed")
+def seed_database():
+    try:
+        # Run in a separate thread so it doesn't block the async loop
+        thread = threading.Thread(target=seed_data)
+        thread.start()
+        return {"message": "Seeding started in the background. It may take a minute to complete."}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.websocket("/ws/stream")
 async def websocket_stream(websocket: WebSocket):
