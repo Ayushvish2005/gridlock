@@ -140,19 +140,32 @@ def _fallback_route(
         ):
             raise ValueError("No route found: destination is isolated by closures")
 
+    # Create a visual detour around the closure
+    if closed_coords:
+        cl = closed_coords[0]
+        # Calculate angle of the line
+        angle = math.atan2(end[0] - start[0], end[1] - start[1])
+        # Perpendicular angle
+        perp_angle = angle + math.pi / 2
+        
+        # Determine detour distance based on distance between start and end
+        dist = _haversine(start, end)
+        detour_dist_deg = (dist * 0.15) / 111000.0 # roughly 15% of length
+        detour_dist_deg = max(detour_dist_deg, 0.01) # min 1km detour
+        
+        detour_lat = cl[0] + math.sin(perp_angle) * detour_dist_deg
+        detour_lon = cl[1] + math.cos(perp_angle) * detour_dist_deg
+        
+        # Add a few points to make it look smooth
+        pt1 = (start[0]*0.7 + detour_lat*0.3, start[1]*0.7 + detour_lon*0.3)
+        pt2 = (detour_lat, detour_lon)
+        pt3 = (end[0]*0.7 + detour_lat*0.3, end[1]*0.7 + detour_lon*0.3)
+        
+        return [start, pt1, pt2, pt3, end]
+
     mid_lat = (start[0] + end[0]) / 2.0
     mid_lon = (start[1] + end[1]) / 2.0
-    mid = (mid_lat, mid_lon)
-
-    # Check if mid-point is blocked; if so, detour around it
-    is_blocked = _coord_near_closure(mid, closed_coords, radius_m=600.0)
-
-    if is_blocked:
-        detour_offset = 0.01 * max(len(closed_coords), 1)
-        detour = (mid_lat + detour_offset, mid_lon + detour_offset)
-        return [start, detour, end]
-
-    return [start, mid, end]
+    return [start, (mid_lat, mid_lon), end]
 
 
 def calculate_route(
