@@ -61,17 +61,19 @@ def get_rule_based_impact(event_data: dict) -> ImpactAssessment:
         from app.database.config import SessionLocal
         from app.models.incident import Incident
         db = SessionLocal()
-        construction_count = db.query(Incident).filter(
-            Incident.zone == event_data.get('zone'),
-            Incident.event_cause == 'construction',
-            Incident.status == 'ACTIVE'
-        ).count()
+        zone = event_data.get('zone')
+        if zone:
+            construction_count = db.query(Incident).filter(
+                Incident.zone == zone,
+                Incident.event_cause == 'construction',
+                Incident.status == 'ACTIVE'
+            ).count()
+            
+            # Multiply risk based on construction density (cap at 1.3x so it doesn't max out everything)
+            if construction_count > 0:
+                multiplier = min(1.0 + (construction_count * 0.05), 1.3)
+                score = int(score * multiplier)
         db.close()
-        
-        # Multiply risk based on construction density
-        if construction_count > 0:
-            multiplier = min(1.0 + (construction_count * 0.15), 2.5) # Max 2.5x
-            score = int(score * multiplier)
     except Exception as e:
         print(f"Compound conflict check failed: {e}")
 
