@@ -603,6 +603,8 @@ def get_routing(
     start_lng: float = Query(...),
     end_lat: float = Query(...),
     end_lng: float = Query(...),
+    closed_lat: Optional[float] = Query(None),
+    closed_lng: Optional[float] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -615,8 +617,10 @@ def get_routing(
             Incident.latitude.isnot(None),
             Incident.longitude.isnot(None)
         ).all()
-        
         closed_coords = [(inc.latitude, inc.longitude) for inc in active_closures]
+        
+        if closed_lat is not None and closed_lng is not None:
+            closed_coords.append((closed_lat, closed_lng))
 
         route = calculate_route(
             start_coords=(start_lat, start_lng),

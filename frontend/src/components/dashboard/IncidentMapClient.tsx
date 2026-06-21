@@ -153,7 +153,7 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
       const end = { lat: centerLat - R_deg * 1.2, lng: centerLng };
 
       try {
-        const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/analytics/routing?start_lat=${start.lat}&start_lng=${start.lng}&end_lat=${end.lat}&end_lng=${end.lng}`;
+        const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/analytics/routing?start_lat=${start.lat}&start_lng=${start.lng}&end_lat=${end.lat}&end_lng=${end.lng}&closed_lat=${centerLat}&closed_lng=${centerLng}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
