@@ -65,8 +65,9 @@ export function PostEventReport({ prefilledId }: { prefilledId?: string }) {
       
       // Auto-refresh report to show updated metrics
       setTimeout(() => fetchReport(undefined, incidentId), 1000);
-    } catch (err) {
-      setError("Failed to submit debrief.");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || err.message || "Unknown error";
+      setError(`Failed to submit debrief: ${errorMsg}`);
     }
   };
 

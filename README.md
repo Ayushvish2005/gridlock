@@ -4,6 +4,22 @@ Gridlock AI is an enterprise-grade, AI-powered Traffic Operations Platform desig
 
 ---
 
+## 📸 Screenshots
+
+| Tactical Dashboard Overview | What-If Simulator |
+| :---: | :---: |
+| ![Overview](images/overview.png) | ![Simulator](images/simulator1.png) |
+
+| AI Traffic Copilot | Live Post-Event Report |
+| :---: | :---: |
+| ![Copilot](images/copilot.png) | ![Report](images/report.png) |
+
+| Analytics & Data 1 | Analytics & Data 2 |
+| :---: | :---: |
+| ![Analytics](images/analytics1.png) | ![Analytics 2](images/analytics2.png) |
+
+---
+
 ## ✨ Key Features
 
 ### 🧠 Ensemble Machine Learning Forecaster
