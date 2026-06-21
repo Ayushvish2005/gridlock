@@ -20,6 +20,15 @@ Gridlock AI is an enterprise-grade, AI-powered Traffic Operations Platform desig
 - **What-If Digital Twin**: Run concurrent simulations tweaking attendance multipliers and barricade constraints to see hypothetical congestion outcomes.
 - **Self-Learning Loop**: Operators can use the Post-Event Debrief to log actual officer deployments, triggering background recalibration of the ML models.
 
+### 🗺️ Tactical Routing Engine
+- **OSMnx & NetworkX Graphs**: Uses real-world street network data of Bengaluru to compute dynamic shortest paths and diversion routes, bypassing active hazard coordinates using Dijkstra's algorithm.
+
+### 🚧 AI Resource Optimizer
+- **Linear Programming (PuLP)**: Dynamically balances global police deployments and barricade constraints across concurrent city-wide incidents using constraint-solving algorithms, ensuring maximum mitigation within limited budgets.
+
+### 📈 Anomaly & Surge Detection
+- **Statistical Z-Score Engine**: Monitors historical and live event thresholds to detect anomalous traffic volume spikes, triggering early-warning indicators on the dashboard.
+
 ---
 
 ## 🛠️ Technology Stack
