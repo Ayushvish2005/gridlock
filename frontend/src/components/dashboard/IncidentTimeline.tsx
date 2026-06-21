@@ -60,6 +60,13 @@ function getStatusConfig(status: string) {
         icon: <XCircle className="w-3 h-3" />,
         pulse: false,
       };
+    case 'PREDICTED':
+      return {
+        label: 'Simulated',
+        className: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+        icon: <Zap className="w-3 h-3" />,
+        pulse: true,
+      };
     default:
       return {
         label: status,
@@ -84,8 +91,22 @@ function formatRelativeTime(ts: string): string {
   }
 }
 
-export function IncidentTimeline({ incidents }: { incidents: Incident[] }) {
-  const sorted = [...(incidents || [])].sort((a, b) => {
+export function IncidentTimeline({ incidents, simResult }: { incidents: Incident[], simResult?: any }) {
+  let displayIncidents = [...(incidents || [])];
+  
+  if (simResult) {
+    displayIncidents.push({
+      id: 'sim-' + Date.now(),
+      event_cause: 'Simulated Scenario',
+      zone: simResult.recommendations?.zone_archetype || 'Target Zone',
+      status: 'PREDICTED',
+      severity: simResult.severity || 'High',
+      created_at: new Date(Date.now() + 10000).toISOString(), // slightly in the future so it sorts to top
+      event_type: 'Simulation'
+    });
+  }
+
+  const sorted = displayIncidents.sort((a, b) => {
     try {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     } catch {
@@ -140,7 +161,7 @@ export function IncidentTimeline({ incidents }: { incidents: Incident[] }) {
                   >
                     {/* Dot */}
                     <div className="absolute left-0 top-1 flex items-center justify-center">
-                      {isActive ? (
+                      {isActive || incident.status === 'PREDICTED' ? (
                         <span className="relative flex h-[30px] w-[30px]">
                           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotColor.split(' ')[0]} opacity-30`}></span>
                           <span className={`relative inline-flex rounded-full h-[30px] w-[30px] ${dotColor.split(' ')[0]}/20 border-2 border-${dotColor.split(' ')[0].replace('bg-', '')} items-center justify-center`}>

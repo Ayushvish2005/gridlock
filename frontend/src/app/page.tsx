@@ -187,7 +187,7 @@ export default function Dashboard() {
             <div className="lg:col-span-4 flex flex-col gap-6">
               <ZoneRiskRanking />
               <div className="flex-1">
-                <IncidentTimeline incidents={incidents} />
+                <IncidentTimeline incidents={incidents} simResult={simResult} />
               </div>
             </div>
           </div>
