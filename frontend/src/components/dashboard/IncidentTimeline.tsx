@@ -92,6 +92,17 @@ function formatRelativeTime(ts: string): string {
 }
 
 export function IncidentTimeline({ incidents, simResult }: { incidents: Incident[], simResult?: any }) {
+  const handleResolve = async (e: any, id: string) => {
+    e.stopPropagation();
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      await fetch(`${API_BASE}/incidents/${id}/resolve`, { method: 'PUT' });
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to resolve", err);
+    }
+  };
+
   let displayIncidents = [...(incidents || [])];
   
   if (simResult) {
@@ -207,7 +218,17 @@ export function IncidentTimeline({ incidents, simResult }: { incidents: Incident
                             {incident.severity}
                           </span>
                         </div>
-                        <span className="text-[10px] text-slate-600">{formatRelativeTime(incident.created_at)}</span>
+                        <div className="flex items-center gap-2">
+                          {isActive && !incident.id.toString().startsWith('sim-') && (
+                            <button 
+                              onClick={(e) => handleResolve(e, incident.id)}
+                              className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                            >
+                              Resolve
+                            </button>
+                          )}
+                          <span className="text-[10px] text-slate-600">{formatRelativeTime(incident.created_at)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
