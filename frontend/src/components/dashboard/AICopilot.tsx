@@ -62,7 +62,7 @@ function MessageBubble({ msg }: { msg: Message }) {
   );
 }
 
-export function AICopilot() {
+export function AICopilot({ context }: { context?: any }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -105,7 +105,10 @@ export function AICopilot() {
       const res = await fetch(`${API_BASE}/analytics/copilot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: question.trim() }),
+        body: JSON.stringify({ 
+          question: question.trim(),
+          context: context || undefined
+        }),
       });
 
       if (!res.ok) throw new Error('Copilot request failed');

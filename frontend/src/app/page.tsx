@@ -492,7 +492,7 @@ export default function Dashboard() {
         {/* COPILOT TAB */}
         {activeTab === 'copilot' && (
           <div className="max-w-4xl mx-auto h-[700px] animate-fade-in-up">
-            <AICopilot />
+            <AICopilot context={simResult} />
           </div>
         )}
 
