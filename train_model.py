@@ -8,9 +8,9 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
 from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score, train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 warnings.filterwarnings("ignore")
@@ -218,36 +218,46 @@ def train_model_rf(
     label_names: list[str],
     model_name: str,
     random_state: int = 42,
-) -> tuple[RandomForestClassifier, str]:
+) -> tuple[VotingClassifier, str]:
     """
-    Train a Random Forest classifier and evaluate with 5-fold CV.
+    Train an Ensemble classifier (LightGBM/HistGradient + RandomForest) and evaluate with Walk-Forward TimeSeriesSplit.
 
     Returns
     -------
-    model   : fitted RandomForestClassifier on the full training split
+    model   : fitted VotingClassifier on the full training split
     report  : formatted evaluation string
     """
     print(f"\n[Training] {model_name}")
 
-    # 80/20 split for final hold-out evaluation
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=random_state, stratify=y
-    )
+    # 80/20 temporal split for final hold-out evaluation (since it's time series)
+    split_idx = int(len(X) * 0.80)
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
 
-    model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=None,
+    rf_model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=15,
         min_samples_split=4,
-        min_samples_leaf=2,
-        max_features="sqrt",
         class_weight="balanced",
         random_state=random_state,
         n_jobs=-1,
     )
 
-    # 5-fold cross-validation on training split
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
-    cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring="accuracy", n_jobs=-1)
+    hgb_model = HistGradientBoostingClassifier(
+        max_iter=100,
+        max_depth=10,
+        learning_rate=0.05,
+        random_state=random_state,
+    )
+
+    model = VotingClassifier(
+        estimators=[('rf', rf_model), ('hgb', hgb_model)],
+        voting='soft'
+    )
+
+    # Walk-Forward Time-Series Split cross-validation on training split
+    tscv = TimeSeriesSplit(n_splits=5)
+    cv_scores = cross_val_score(model, X_train, y_train, cv=tscv, scoring="accuracy", n_jobs=-1)
 
     # Fit final model on all training data
     model.fit(X_train, y_train)
@@ -279,7 +289,21 @@ def train_model_rf(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def feature_importance_report(model: RandomForestClassifier, model_name: str) -> str:
-    importances = model.feature_importances_
+    # For VotingClassifier, try to average feature importances of underlying models if possible
+    if hasattr(model, 'feature_importances_'):
+        importances = model.feature_importances_
+    elif hasattr(model, 'estimators_'):
+        # Attempt to get feature importances from underlying estimators
+        fi_list = []
+        for est in model.estimators_:
+            if hasattr(est, 'feature_importances_'):
+                fi_list.append(est.feature_importances_)
+        if fi_list:
+            importances = np.mean(fi_list, axis=0)
+        else:
+            return f"Feature importances not available for {model_name}."
+    else:
+        return f"Feature importances not available for {model_name}."
     pairs = sorted(zip(FEATURE_COLUMNS, importances), key=lambda x: -x[1])
     lines = [f"\nFeature Importance — {model_name}:"]
     for feat, imp in pairs:

@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { AlertTriangle, TrendingUp, Users, ShieldAlert, CheckCircle, Clock, Map as MapIcon, ChevronRight, Play, Activity, Target, Zap, LayoutDashboard, BarChart3, Presentation, Bot, Search, Radio } from "lucide-react";
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { SummaryCards } from '@/components/dashboard/SummaryCards';
 import { IncidentMap } from '@/components/dashboard/IncidentMap';
@@ -12,14 +13,17 @@ import { ScenarioSimulator } from '@/components/dashboard/ScenarioSimulator';
 import { WhatIfSimulator } from '@/components/dashboard/WhatIfSimulator';
 import { AICopilot } from '@/components/dashboard/AICopilot';
 import { PostEventReport } from '@/components/dashboard/PostEventReport';
+import { ResourceAllocationPanel } from '@/components/dashboard/ResourceAllocationPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+
+
 const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'analytics', label: 'Analytics' },
-  { id: 'simulator', label: 'Simulator' },
-  { id: 'copilot', label: 'Copilot' },
-  { id: 'reports', label: 'Reports' },
+  { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+  { id: 'simulator', label: 'Simulator', icon: <Activity className="w-4 h-4" /> },
+  { id: 'copilot', label: 'Copilot', icon: <Bot className="w-4 h-4" /> },
+  { id: 'reports', label: 'Reports', icon: <Presentation className="w-4 h-4" /> },
 ];
 
 export default function Dashboard() {
@@ -30,6 +34,7 @@ export default function Dashboard() {
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [deploymentDetails, setDeploymentDetails] = useState<{posts: any[], barricadesPerPost: number} | null>(null);
+  const [liveAlert, setLiveAlert] = useState<{message: string, severity: string} | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -51,9 +56,22 @@ export default function Dashboard() {
     setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
     const t = setInterval(() => setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false })), 1000);
 
+    // WebSocket for True Real-Time Concurrency
+    const wsUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace('http', 'ws') + '/ws/stream';
+    const ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setLiveAlert({ message: data.message, severity: data.severity });
+        setIncidents(prev => [data, ...prev].slice(0, 30));
+        setTimeout(() => setLiveAlert(null), 8000); // Hide after 8s
+      } catch (e) { console.error(e); }
+    };
+
     return () => {
       clearInterval(interval);
       clearInterval(t);
+      ws.close();
       window.removeEventListener('simulate-incident', handleSimulate);
       window.removeEventListener('deployment-details', handleDeploymentDetails);
     };
@@ -73,65 +91,83 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-slate-200 p-4 md:p-6 space-y-6 animate-fade-in-up">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-700/50 pb-4 gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="flex min-h-screen bg-[#050814] text-slate-200 font-sans">
+      
+      {/* SIDEBAR */}
+      <div className="w-64 bg-[#0a0f1e]/90 border-r border-indigo-900/30 backdrop-blur-xl flex flex-col p-4 fixed h-full z-40 shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center gap-3 mb-8 px-2 mt-2">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-white">TRAFFIC COMMAND CENTER</h1>
-            <p className="text-sm font-medium text-slate-400">AI-Powered Operations Platform</p>
+            <h1 className="text-lg font-black tracking-tight text-white leading-tight">GRIDLOCK</h1>
+            <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Command Center</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col text-right">
-            <span className="text-lg font-mono font-bold text-slate-200">
-              {currentTime || <span className="opacity-0">00:00:00</span>}
-            </span>
-            <span className="text-xs text-slate-500">
-              {currentTime ? new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''}
-            </span>
-          </div>
-          <div className="glass px-4 py-2 rounded-lg border border-slate-700/50 flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            <span className="text-sm font-bold tracking-wide text-green-400 uppercase">System Active</span>
-          </div>
+        <div className="flex flex-col gap-2 flex-1">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Navigation</p>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-3 text-sm font-semibold tracking-wide transition-all rounded-xl flex items-center gap-3 ${
+                activeTab === tab.id 
+                  ? 'bg-gradient-to-r from-indigo-600/20 to-purple-600/10 text-indigo-400 border border-indigo-500/30 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        
+        <div className="mt-auto border-t border-slate-800/50 pt-6 px-2 pb-4">
+           <div className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+             <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+             </div>
+             <div>
+               <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">System Online</p>
+               <p className="text-xs text-slate-400 font-mono mt-0.5">{currentTime || '00:00:00'}</p>
+             </div>
+           </div>
         </div>
       </div>
 
-      {/* ALERTS PANEL */}
-      <AlertsPanel />
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 ml-64 p-6 lg:p-8 space-y-8 animate-fade-in-up">
+        
+        {/* LIVE TELEMETRY BANNER */}
+        {liveAlert && (
+          <div className={`fixed top-4 left-[calc(50%+128px)] -translate-x-1/2 z-50 px-6 py-3 rounded-full border shadow-2xl flex items-center gap-3 animate-fade-in-up backdrop-blur-md ${
+            liveAlert.severity === 'Critical' ? 'bg-red-950/90 border-red-500/50 text-red-200 shadow-red-900/20' :
+            liveAlert.severity === 'High' ? 'bg-orange-950/90 border-orange-500/50 text-orange-200 shadow-orange-900/20' :
+            'bg-blue-950/90 border-blue-500/50 text-blue-200 shadow-blue-900/20'
+          }`}>
+            <div className="w-2 h-2 rounded-full bg-current animate-ping"></div>
+            <span className="font-bold text-sm tracking-wide">{liveAlert.message}</span>
+          </div>
+        )}
 
-      {/* KPI CARDS */}
-      {analytics && <SummaryCards data={analytics.summary} />}
+        {/* ALERTS PANEL */}
+        <div className="mb-4">
+          <AlertsPanel />
+        </div>
 
-      {/* NAVIGATION TABS */}
-      <div className="flex overflow-x-auto border-b border-slate-700/50 hide-scrollbar pb-px">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-3 text-sm font-semibold tracking-wide transition-all whitespace-nowrap ${
-              activeTab === tab.id 
-                ? 'text-white tab-active-indicator' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+        {/* KPI CARDS */}
+        {analytics && (
+          <div className="mb-8">
+            <SummaryCards data={analytics.summary} />
+          </div>
+        )}
 
-      {/* TAB CONTENT */}
-      <div className="mt-6 min-h-[600px]">
+        {/* TAB CONTENT */}
+        <div className="min-h-[600px]">
         
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
@@ -161,8 +197,14 @@ export default function Dashboard() {
         {activeTab === 'analytics' && (
           <div className="space-y-6 animate-fade-in-up">
             {analytics && <AnalyticsCharts data={analytics.charts} />}
-            <div className="mt-8">
-              <CongestionForecast />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+              <div className="lg:col-span-8">
+                <CongestionForecast />
+              </div>
+              <div className="lg:col-span-4 h-[500px]">
+                <ResourceAllocationPanel />
+              </div>
             </div>
           </div>
         )}
@@ -170,12 +212,18 @@ export default function Dashboard() {
         {/* SIMULATOR TAB */}
         {activeTab === 'simulator' && (
           <div className="space-y-6 animate-fade-in-up">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-4 glass rounded-xl border border-slate-700/50 overflow-hidden p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+
+
+                {/* Left Column: Form */}
+                <div className="lg:col-span-4 space-y-6">
+                <div className="glass rounded-xl border border-slate-700/50 overflow-hidden p-6">
                 <ScenarioSimulator 
                   onSimulate={setSimResult} 
                   selectedLocation={selectedLocation} 
                 />
+              </div>
               </div>
               <div className="lg:col-span-8 h-[500px] glass rounded-xl border border-slate-700/50 overflow-hidden relative">
                 <div className="absolute top-4 left-4 z-[400] glass px-4 py-2 rounded-lg border border-slate-700/50 shadow-xl pointer-events-none">
@@ -268,25 +316,108 @@ export default function Dashboard() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center">
+                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center relative">
                           <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Officers Required</span>
                           <span className="text-xl font-bold text-blue-400">{simResult.recommendations.officers_required}</span>
+                          {simResult.recommendations.resource_constrained && simResult.recommendations.original_request?.officers > simResult.recommendations.officers_required && (
+                            <span className="absolute top-3 right-3 text-xs text-red-400 font-bold bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">
+                              Constraint Clipped (was {simResult.recommendations.original_request.officers})
+                            </span>
+                          )}
                         </div>
-                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center">
-                          <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Barricades Needed</span>
-                          <span className="text-xl font-bold text-yellow-400">{simResult.recommendations.barricades_required}</span>
+                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center relative">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Barricades</span>
+                          <span className="text-xl font-bold text-blue-400">{simResult.recommendations.barricades_required}</span>
+                          {simResult.recommendations.resource_constrained && simResult.recommendations.original_request?.barricades > simResult.recommendations.barricades_required && (
+                            <span className="absolute top-3 right-3 text-xs text-red-400 font-bold bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">
+                              Constraint Clipped (was {simResult.recommendations.original_request.barricades})
+                            </span>
+                          )}
                         </div>
+                      </div>
+
+                      {simResult.recommendations.resource_constrained && (
+                        <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start gap-3">
+                          <span className="text-yellow-400 text-lg">⚠</span>
+                          <div>
+                            <h5 className="text-sm font-bold text-yellow-400">Resource Optimization Active</h5>
+                            <p className="text-xs text-yellow-200/80 mt-1">Due to concurrent city-wide incidents, maximum resource limits have been reached. The algorithm has dynamically clipped the requested deployment to fit within global constraints.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 text-sm mt-2">
                         <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center">
                           <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Diversion Route</span>
                           <span className="text-sm font-bold text-slate-200">{simResult.recommendations.diversion_required ? 'Required' : 'None'}</span>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center">
                           <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Tow Vehicle</span>
-                          <span className="text-sm font-bold text-slate-200">{simResult.recommendations.tow_vehicle_required ? 'Required' : 'None'}</span>
+                          <span className="text-sm font-bold text-slate-200">{simResult.recommendations.tow_vehicle_required ? 'Required' : 'Not Required'}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                </Card>
+
+                {/* --- GLOBAL STRATEGIES & PCU --- */}
+                <Card className="glass border-teal-500/30 bg-teal-900/10 shadow-xl mt-6">
+                    <CardHeader className="pb-3 border-b border-teal-500/20">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-teal-400 flex items-center gap-2 text-sm uppercase tracking-wider">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                          Urban Planning Strategies
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Zone Archetype</span>
+                          <span className="text-sm font-bold text-teal-400">{simResult.recommendations.zone_archetype?.replace('_', ' ')}</span>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50 flex flex-col justify-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider mb-1">Est. PCU Impact</span>
+                          <span className="text-sm font-bold text-orange-400">{simResult.recommendations.pcu_impact_score} PCU</span>
                         </div>
                       </div>
 
-                      {deploymentDetails && deploymentDetails.posts.length > 0 && (
+                      {simResult.recommendations.spatial_spillover_warning && (
+                        <div className="mt-2 p-2 rounded bg-red-500/10 border border-red-500/30 flex items-center gap-2">
+                          <span className="text-red-400 text-lg">🎈</span>
+                          <div>
+                            <h5 className="text-xs font-bold text-red-400 uppercase tracking-wider">Spatial Spillover Risk (Balloon Effect)</h5>
+                            <p className="text-[10px] text-red-200/80">Resolving this incident may displace traffic into neighboring zones.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {simResult.recommendations.nearest_poi_distance && (
+                         <div className="mt-2 p-2 rounded bg-blue-500/10 border border-blue-500/30 flex items-center gap-2">
+                           <span className="text-blue-400 text-lg">📍</span>
+                           <div>
+                             <h5 className="text-xs font-bold text-blue-400 uppercase tracking-wider">Haversine Proximity</h5>
+                             <p className="text-[10px] text-blue-200/80">{simResult.recommendations.nearest_poi_distance}</p>
+                           </div>
+                         </div>
+                      )}
+
+                      {simResult.recommendations.global_strategies?.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Prescribed Global Strategies</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {simResult.recommendations.global_strategies.map((strategy: string, idx: number) => (
+                              <span key={idx} className="px-2.5 py-1 text-[11px] font-medium bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-md">
+                                {strategy.replace(/_/g, ' ')}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                </Card>
+
+                <div className="mt-6">
+                  {deploymentDetails && deploymentDetails.posts.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-slate-700/50">
                           <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Geocoded Deployment Locations</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -305,8 +436,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       )}
-                    </CardContent>
-                </Card>
+                </div>
 
                 {/* Historical Insights */}
                 {simResult.similar_events?.length > 0 && (
@@ -372,6 +502,7 @@ export default function Dashboard() {
             <PostEventReport />
           </div>
         )}
+      </div>
       </div>
     </div>
   );

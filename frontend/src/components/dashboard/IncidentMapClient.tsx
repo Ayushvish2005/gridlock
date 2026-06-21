@@ -12,8 +12,8 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   
-  const [snappedBarricades, setSnappedBarricades] = useState<{lat: number, lng: number, name?: string}[]>([]);
-  const [diversionRoute, setDiversionRoute] = useState<[number, number][] | null>(null);
+  const [snappedBarricades, setSnappedBarricades] = useState<{lat: number, lng: number, name?: string, direction?: string}[]>([]);
+  const [diversionRoute, setDiversionRoute] = useState<{lat: number, lng: number}[] | null>(null);
 
   const overlaysRef = useRef<any[]>([]);
 
@@ -88,40 +88,16 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
     const bOffset = radiusInDegrees * 0.5;
 
     const getIdealBarricades = async () => {
-      try {
-        const query = `
-          [out:json];
-          (
-            node["highway"="traffic_signals"](around:${radiusInMeters}, ${selectedLocation.lat}, ${selectedLocation.lng});
-            node["junction"="roundabout"](around:${radiusInMeters}, ${selectedLocation.lat}, ${selectedLocation.lng});
-          );
-          out body 10;
-        `;
-        const res = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          body: query
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.elements && data.elements.length > 0) {
-             const sorted = data.elements.sort((a: any, b: any) => {
-               const distA = Math.pow(a.lat - selectedLocation.lat, 2) + Math.pow(a.lon - selectedLocation.lng, 2);
-               const distB = Math.pow(b.lat - selectedLocation.lat, 2) + Math.pow(b.lon - selectedLocation.lng, 2);
-               // Sort so we get points further out towards the radius edge, not exactly at the center!
-               // Actually we want barricades on the perimeter. So we sort by how close they are to the radius edge.
-               const targetSq = Math.pow(radiusInDegrees, 2);
-               return Math.abs(distA - targetSq) - Math.abs(distB - targetSq);
-            });
-            return sorted.slice(0, 4).map((el: any) => ({ lat: el.lat, lng: el.lon }));
-          }
-        }
-      } catch(e) {}
+      // To prevent barricades from clumping on one side of the city, 
+      // we mathematically distribute 4 ideal points (North, South, East, West) exactly on the perimeter.
+      // OSRM will later "snap" these ideal points to the absolute nearest real-world drivable road.
+      const perimeterOffset = radiusInDegrees * 1.0; 
       
       return [
-        { lat: selectedLocation.lat + bOffset, lng: selectedLocation.lng },
-        { lat: selectedLocation.lat - bOffset, lng: selectedLocation.lng },
-        { lat: selectedLocation.lat, lng: selectedLocation.lng + bOffset },
-        { lat: selectedLocation.lat, lng: selectedLocation.lng - bOffset },
+        { lat: selectedLocation.lat + perimeterOffset, lng: selectedLocation.lng }, // North
+        { lat: selectedLocation.lat - perimeterOffset, lng: selectedLocation.lng }, // South
+        { lat: selectedLocation.lat, lng: selectedLocation.lng + perimeterOffset }, // East
+        { lat: selectedLocation.lat, lng: selectedLocation.lng - perimeterOffset }, // West
       ];
     };
 
@@ -149,7 +125,17 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
                    }
                  } catch(err) {}
 
-                 snapped.push({ lat: newLat, lng: newLng, name: locationName });
+                 // Calculate flow direction based on relative position to the incident center
+                 const dLat = selectedLocation.lat - newLat;
+                 const dLng = selectedLocation.lng - newLng;
+                 const angle = Math.atan2(dLng, dLat) * (180 / Math.PI);
+                 let direction = "Unknown";
+                 if (angle > -45 && angle <= 45) direction = "Northbound Flow";
+                 else if (angle > 45 && angle <= 135) direction = "Eastbound Flow";
+                 else if (angle > -135 && angle <= -45) direction = "Westbound Flow";
+                 else direction = "Southbound Flow";
+
+                 snapped.push({ lat: newLat, lng: newLng, name: locationName, direction });
               }
             }
           }
@@ -165,15 +151,14 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
       const R_deg = radiusMeters / 111000;
       const start = { lat: centerLat + R_deg * 1.2, lng: centerLng };
       const end = { lat: centerLat - R_deg * 1.2, lng: centerLng };
-      const waypoint = { lat: centerLat, lng: centerLng + R_deg * 1.5 }; // Force route around center
 
       try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${waypoint.lng},${waypoint.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+        const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/analytics/routing?start_lat=${start.lat}&start_lng=${start.lng}&end_lat=${end.lat}&end_lng=${end.lng}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          if (data.routes && data.routes.length > 0) {
-            return data.routes[0].geometry.coordinates.map((c: number[]) => ({lat: c[1], lng: c[0]}));
+          if (data.route && data.route.length > 0) {
+            return data.route.map((c: number[]) => ({lat: c[0], lng: c[1]}));
           }
         }
       } catch (e) {
@@ -306,6 +291,11 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
       });
       selMarker.addListener ? selMarker.addListener('click', () => selInfo.open(mapInstance, selMarker)) : selMarker.on && selMarker.on('click', () => selInfo.open(mapInstance, selMarker));
       overlaysRef.current.push(selMarker, selInfo);
+      
+      // Pan to the selected location
+      try {
+        mapInstance.setCenter({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+      } catch(e) {}
     }
 
     // Render Simulation Results (Radius, Barricades, Diversion)
@@ -323,12 +313,21 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
       overlaysRef.current.push(simCircle);
 
       if (simResult.recommendations?.barricades_required > 0 && snappedBarricades.length > 0) {
-        snappedBarricades.forEach((pos, idx) => {
+        snappedBarricades.forEach((b, i) => {
+          const desc = document.createElement('div');
+          desc.innerHTML = `
+            <div style="background:#0a0f1e; padding:10px; border-radius:8px; border:1px solid #334155; color:white; font-family:Inter,sans-serif;">
+              <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">Deployment Post ${i+1}</div>
+              <div style="font-size:12px; color:#94a3b8; margin-bottom:2px;">${b.name || 'Unnamed Junction'}</div>
+              <div style="font-size:12px; color:#60a5fa; font-weight:600;">Intercepts: ${b.direction || 'Unknown Flow'}</div>
+              <div style="font-size:12px; color:#f87171; margin-top:4px;">Requires ${Math.ceil(simResult.recommendations.barricades_required / Math.max(snappedBarricades.length, 1))} Barricades</div>
+            </div>
+          `;
           const barricadeMarker = new window.mappls.Marker({
             map: mapInstance,
-            position: { lat: pos.lat, lng: pos.lng },
+            position: { lat: b.lat, lng: b.lng },
             html: `<div style="background-color: #ea580c; color: white; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; transform: translate(-50%, -50%);">
-              🚧 Post ${idx + 1}
+              🚧 Post ${i + 1}
             </div>`
           });
           overlaysRef.current.push(barricadeMarker);

@@ -1,95 +1,103 @@
-# AI Traffic Operations Platform MVP
+# 🚦 Gridlock AI - Traffic Command Center
 
-AI-Assisted Traffic Command Center for Planned and Unplanned Event Management.
-Built for the Hackathon.
-
-## Features
-- **Deterministic Traffic Impact Assessment:** Fast, rule-based engine mapping event features to impact scores and severity.
-- **Incident Prioritization Engine:** Ranks incidents (P1 to P4).
-- **Recommendation Engine:** Rule-based generation of operational tasks (deploy officers, barricades, diversions).
-- **AI Explanation Service:** Uses OpenRouter LLMs to generate human-readable operational context.
-- **Next.js Traffic Command Center Dashboard:** Dark-mode dashboard visualizing metrics, incidents via an interactive map (Leaflet), and a scenario simulator.
-
-## Tech Stack
-- **Frontend:** Next.js 15, React, TailwindCSS, Recharts, React Leaflet.
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy, scikit-learn (for future/optional ML).
-- **Database:** PostgreSQL.
-- **AI Integration:** OpenRouter (`openai/gpt-4o-mini`).
+Gridlock AI is an enterprise-grade, AI-powered Traffic Operations Platform designed for city authorities and traffic police. It uses Ensemble Machine Learning, real-time telemetry, and LLM-driven OSINT ingestion to forecast congestion, optimize police deployments, and mitigate severe traffic events before they happen.
 
 ---
 
-## Local Setup & Development
+## ✨ Key Features
 
-### 1. Database
-We provide a `docker-compose.yml` for quick local development.
+### 🧠 Ensemble Machine Learning Forecaster
+- **VotingClassifier Ensemble**: Combines the power of `HistGradientBoostingClassifier` and `RandomForestClassifier` for highly accurate severity and impact predictions.
+- **Walk-Forward Validation**: Trained using `TimeSeriesSplit` to respect the chronological nature of traffic patterns and prevent data leakage.
+- **Haversine Proximity & Spatial Spillovers**: Mathematically calculates the distance to critical PoIs and warns of "Balloon Effects" (displacing traffic into neighboring zones).
+
+### 💥 Compound Conflict Detector (Infrastructure Stress)
+- **Geographic Overlap Analysis**: Dynamically queries the database for active **construction** zones. If a new incident overlaps with degraded infrastructure, an **Infrastructure Stress Multiplier** (up to 2.5x) is applied to the risk score.
+
+### 💻 Tactical Command Dashboard (Next.js)
+- **Sleek Sidebar Navigation**: A premium, dark-mode administrative UI built with TailwindCSS, Lucide-React, and Glassmorphism design principles.
+- **Live Telemetry WebSockets**: Receives high-priority asynchronous alerts directly from the FastAPI backend.
+- **What-If Digital Twin**: Run concurrent simulations tweaking attendance multipliers and barricade constraints to see hypothetical congestion outcomes.
+- **Self-Learning Loop**: Operators can use the Post-Event Debrief to log actual officer deployments, triggering background recalibration of the ML models.
+
+---
+
+## 🛠️ Technology Stack
+
+**Frontend:**
+- Next.js (v16.2.9) with Turbopack
+- React 18 & TypeScript
+- TailwindCSS (Premium dark-mode/glassmorphism UI)
+- Lucide React Icons
+
+**Backend:**
+- Python 3 & FastAPI
+- SQLAlchemy (Database ORM)
+- Scikit-Learn (ML Training & Inference Pipeline)
+- Uvicorn & WebSockets
+
+**AI & LLM:**
+- OpenRouter API (GPT-4o-mini) for the AI Copilot and OSINT Harvester
+
+---
+
+## 🚀 Installation & Setup
+
+### 1. Clone the Repository
 ```bash
-docker-compose up -d
+git clone https://github.com/Ayushvish2005/gridlock.git
+cd gridlock
 ```
-*This starts a PostgreSQL instance on port 5432 with db `traffic_ops`, user `postgres`, password `password`.*
 
-### 2. Backend (FastAPI)
-Navigate to the `backend` directory:
+### 2. Backend Setup
 ```bash
 cd backend
+# Create a virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+pip install lightgbm catboost  # Optional advanced gradient boosting
+
+# Set up Environment Variables
+cp .env.example .env
+# Open .env and add your OPENROUTER_API_KEY
 ```
 
-Set up your `.env` file in the `backend/` directory (optional but needed for AI explanations):
-```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/traffic_ops
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
-
-Run the backend server:
+### 3. Train the ML Models
+Before starting the backend, generate the `.pkl` model files:
 ```bash
+# From the root directory (ensure backend venv is active)
+python3 train_model.py --data "Astram event data_anonymized.csv"
+```
+
+### 4. Start the FastAPI Backend
+```bash
+cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Frontend (Next.js)
-Navigate to the `frontend` directory:
+### 5. Frontend Setup
+Open a new terminal window:
 ```bash
 cd frontend
+
+# Install dependencies
 npm install
-npm run dev &
-```
-The dashboard will be available at `http://localhost:3000`.
 
----
-
-## Machine Learning Models (Optional MVP Enhancement)
-
-While the MVP strictly uses the deterministic rule-based engine (as per specs), we have included a robust training script (`scripts/train_model.py`) that learns the exact business logic from your historical Astram CSV dataset using Random Forest Classifiers.
-
-To train the models:
-```bash
-python scripts/train_model.py --data path/to/your/astram_events.csv --out models/
+# Start the Next.js development server
+npm run dev
 ```
 
-If the `models/` directory contains the generated `.pkl` files, the FastAPI application will attempt to load them on startup, proving the architecture is "ML Ready" for future congestion forecasting upgrades (CatBoost/LightGBM). If the models are not found, the backend safely falls back to the deterministic rule engine.
+The Tactical Command Dashboard will now be available at `http://localhost:3000`.
 
 ---
 
-## Deployment Guidelines
+## 📚 API Architecture
 
-### Database (Neon PostgreSQL Free Tier)
-1. Create a project on [Neon.tech](https://neon.tech).
-2. Copy the connection string provided.
-3. Add it as the `DATABASE_URL` environment variable on your backend hosting provider.
-
-### Backend (Render Free Tier / Railway)
-1. Connect your GitHub repository to Render/Railway.
-2. Root directory: `backend`
-3. Build Command: `pip install -r requirements.txt`
-4. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Add `DATABASE_URL` and `OPENROUTER_API_KEY` to the Environment Variables.
-
-### Frontend (Vercel Free Tier)
-1. Import your GitHub repository into Vercel.
-2. Set the Root Directory to `frontend`.
-3. Vercel will automatically detect Next.js and apply the correct build settings (`npm run build`).
-4. Add any required environment variables (e.g., `NEXT_PUBLIC_API_URL` if you change the backend hosting URL from localhost).
-
----
-*Built for the Hackathon MVP.*
+- `GET /analytics/forecast`: Deterministic mathematical congestion prediction.
+- `GET /analytics/zone-risk-ranking`: Aggregates active incidents into prioritized Zone Risk scores.
+- `POST /analytics/copilot`: Interactive chat assistant for Traffic Operations protocols.
+- `POST /analytics/debrief/{id}`: Logs real-world variances and triggers model recalibration.
+- `WS /ws/stream`: Live telemetry broadcast stream for dashboard sirens.

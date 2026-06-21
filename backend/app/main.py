@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from app.database.config import SessionLocal
+from app.models.incident import Incident
+import random
 from contextlib import asynccontextmanager
 
 from app.database.config import engine, Base
@@ -43,3 +47,37 @@ app.include_router(analytics.router)
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "AI Traffic Operations Platform API is running"}
+
+@app.websocket("/ws/stream")
+async def websocket_stream(websocket: WebSocket):
+    await websocket.accept()
+    print("WebSocket client connected to live stream.")
+    try:
+        while True:
+            # Simulate high-performance telemetry by aggressively pushing events
+            await asyncio.sleep(random.uniform(15, 30))
+            db = SessionLocal()
+            try:
+                # Get a random historic incident to simulate real-time telemetry
+                count = db.query(Incident).count()
+                if count > 0:
+                    random_idx = random.randint(0, count - 1)
+                    incident = db.query(Incident).offset(random_idx).first()
+                    
+                    data = {
+                        "id": incident.id,
+                        "event_type": incident.event_type,
+                        "severity": incident.severity,
+                        "zone": incident.zone,
+                        "latitude": incident.latitude,
+                        "longitude": incident.longitude,
+                        "timestamp": incident.start_datetime.isoformat() if incident.start_datetime else None,
+                        "message": f"🔴 LIVE ALERT: New {incident.severity.upper()} {incident.event_type} detected in {incident.zone}!"
+                    }
+                    await websocket.send_json(data)
+            finally:
+                db.close()
+    except WebSocketDisconnect:
+        print("WebSocket client disconnected.")
+    except Exception as e:
+        print(f"WebSocket error: {e}")

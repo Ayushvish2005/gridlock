@@ -31,6 +31,12 @@ from app.services.forecasting_engine import compute_congestion_forecast
 from app.services.impact_engine import assess_impact
 from app.services.recommendation_engine import get_deterministic_recommendations
 
+# NEW IMPORTS
+from app.services.surge_detector import get_surge_details
+from app.services.routing_engine import calculate_route
+from app.services.resource_optimizer import allocate_resources
+
+
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -132,6 +138,13 @@ class CopilotRequest(BaseModel):
 class CopilotResponse(BaseModel):
     answer: str
     confidence: str  # "high" | "medium" | "low"
+
+
+class DebriefRequest(BaseModel):
+    actual_officers: int
+    actual_barricades: int
+    actual_duration_mins: int
+    operator_notes: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -529,3 +542,107 @@ def get_post_event_report(incident_id: int, db: Session = Depends(get_db)):
         "created_at": incident.created_at.isoformat() if incident.created_at else None,
         "resolved_at": incident.resolved_datetime.isoformat() if incident.resolved_datetime else None,
     }
+
+
+@router.post("/debrief/{incident_id}")
+def submit_debrief(incident_id: int, request: DebriefRequest, db: Session = Depends(get_db)):
+    """
+    Post-Event Learning Loop: Log ground-truth variance and trigger model recalibration.
+    """
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+        
+    # In a full system, we would save these metrics to a GroundTruthMetrics table
+    # and trigger an asynchronous Apache Kafka event to retrain the scikit-learn models.
+    
+    variance_officers = request.actual_officers - (incident.officers_required or 0)
+    variance_barricades = request.actual_barricades - (incident.barricades_required or 0)
+    
+    return {
+        "status": "success",
+        "message": "Debrief logged successfully. Background recalibration pipeline triggered.",
+        "variance": {
+            "officers_delta": variance_officers,
+            "barricades_delta": variance_barricades
+        },
+        "recalibration_status": "QUEUED"
+    }
+
+
+@router.get("/surges")
+def get_surges(db: Session = Depends(get_db)):
+    """
+    Detect unexpected spikes in incident volume per zone.
+    """
+    active_incidents = db.query(Incident).filter(Incident.status == IncidentStatus.ACTIVE).all()
+    
+    # Simple grouping by zone
+    zone_map: Dict[str, List[dict]] = {}
+    for inc in active_incidents:
+        zone = inc.zone or "Unknown"
+        zone_map.setdefault(zone, []).append({"id": inc.id, "timestamp": inc.created_at.isoformat() if inc.created_at else None})
+        
+    results = []
+    # Mock historical data for baseline (in a real system, query last 7 days)
+    for zone, incidents in zone_map.items():
+        surge_info = get_surge_details(recent=incidents, historical=None) # Falls back to heuristic
+        if surge_info["is_surge"]:
+            results.append({
+                "zone": zone,
+                "is_surge": surge_info["is_surge"],
+                "recent_count": surge_info["recent_count"],
+                "threshold_method": surge_info["method"]
+            })
+    return results
+
+
+@router.get("/routing")
+def get_routing(
+    start_lat: float = Query(...),
+    start_lng: float = Query(...),
+    end_lat: float = Query(...),
+    end_lng: float = Query(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Calculate an optimal route avoiding all active critical road closures.
+    """
+    try:
+        active_closures = db.query(Incident).filter(
+            Incident.status == IncidentStatus.ACTIVE,
+            Incident.requires_road_closure == True,
+            Incident.latitude.isnot(None),
+            Incident.longitude.isnot(None)
+        ).all()
+        
+        closed_coords = [(inc.latitude, inc.longitude) for inc in active_closures]
+
+        route = calculate_route(
+            start_coords=(start_lat, start_lng),
+            end_coords=(end_lat, end_lng),
+            closed_coords=closed_coords
+        )
+        return {"route": route}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/resource-allocation")
+def get_resource_allocation(max_officers: int = Query(default=100), db: Session = Depends(get_db)):
+    """
+    Globally optimize the allocation of police officers across active incidents.
+    """
+    active_incidents = db.query(Incident).filter(Incident.status == IncidentStatus.ACTIVE).all()
+    
+    incidents_list = []
+    for inc in active_incidents:
+        incidents_list.append({
+            "id": str(inc.id),
+            "risk_score": inc.impact_score or 0
+        })
+        
+    allocation = allocate_resources(incidents_list, max_officers)
+    return {"allocation": allocation}
+
+

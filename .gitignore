@@ -13,3 +13,8 @@ frontend/build/
 backend/__pycache__/
 backend/venv/
 
+.agents
+
+backend/app/services/*.graphml
+backend/cache/
+backend/app/routers/analytics_patch.py

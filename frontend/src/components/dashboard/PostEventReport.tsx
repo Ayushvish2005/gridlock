@@ -12,6 +12,10 @@ export function PostEventReport() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [debriefSuccess, setDebriefSuccess] = useState('');
+  const [actualOfficers, setActualOfficers] = useState('');
+  const [actualBarricades, setActualBarricades] = useState('');
+  const [actualDuration, setActualDuration] = useState('');
 
   const fetchReport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,11 +23,15 @@ export function PostEventReport() {
 
     setLoading(true);
     setError('');
+    setDebriefSuccess('');
     setReport(null);
 
     try {
       const res = await axios.get(`${API_BASE}/analytics/post-event-report/${incidentId.trim()}`);
       setReport(res.data);
+      setActualOfficers(res.data.officers_deployed?.toString() || '0');
+      setActualBarricades(res.data.barricades_deployed?.toString() || '0');
+      setActualDuration(res.data.predicted_delay_mins?.toString() || '0');
     } catch (err: any) {
       if (err.response?.status === 404) {
         setError("Incident not found.");
@@ -34,6 +42,20 @@ export function PostEventReport() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const submitDebrief = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post(`${API_BASE}/analytics/debrief/${incidentId.trim()}`, {
+        actual_officers: parseInt(actualOfficers),
+        actual_barricades: parseInt(actualBarricades),
+        actual_duration_mins: parseInt(actualDuration)
+      });
+      setDebriefSuccess(res.data.message);
+    } catch (err) {
+      setError("Failed to submit debrief.");
     }
   };
 
@@ -97,6 +119,7 @@ export function PostEventReport() {
         )}
 
         {report && (
+        <>
           <div className="space-y-6 animate-fade-in-up">
             <div className="flex items-center justify-between p-5 rounded-xl bg-slate-800/40 border border-slate-700/50">
               <div>
@@ -165,6 +188,40 @@ export function PostEventReport() {
               </div>
             </div>
           </div>
+
+          <div className="mt-8 border-t border-slate-700/50 pt-6 animate-fade-in-up delay-200">
+            <h4 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-400" />
+              Post-Event Learning Loop
+            </h4>
+            <p className="text-sm text-slate-400 mb-4">Input actual ground-truth data to trigger background model recalibration.</p>
+            
+            {debriefSuccess ? (
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                <span className="text-sm text-green-200">{debriefSuccess}</span>
+              </div>
+            ) : (
+              <form onSubmit={submitDebrief} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Actual Officers</label>
+                  <input type="number" value={actualOfficers} onChange={e=>setActualOfficers(e.target.value)} className="w-full bg-slate-800/60 border border-slate-600/50 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/70" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Actual Barricades</label>
+                  <input type="number" value={actualBarricades} onChange={e=>setActualBarricades(e.target.value)} className="w-full bg-slate-800/60 border border-slate-600/50 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/70" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Actual Duration (m)</label>
+                  <input type="number" value={actualDuration} onChange={e=>setActualDuration(e.target.value)} className="w-full bg-slate-800/60 border border-slate-600/50 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/70" />
+                </div>
+                <Button type="submit" className="bg-green-600 hover:bg-green-500 text-white rounded-xl h-[38px]">
+                  Submit Debrief
+                </Button>
+              </form>
+            )}
+          </div>
+        </>
         )}
       </CardContent>
     </Card>

@@ -2,8 +2,23 @@ import os
 import json
 import httpx
 from typing import Dict, Any
+from app.database.config import SessionLocal
+from app.models.incident import Incident, IncidentStatus
+from sqlalchemy import func
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# ZONE ARCHETYPES — Maps areas to their "personality"
+ZONE_ARCHETYPES = {
+    'Central': 'CBD_COMMERCIAL',
+    'Upparpet': 'CBD_RETAIL',
+    'Shivajinagar': 'CBD_COMMERCIAL',
+    'Malleshwaram': 'RESIDENTIAL_COMMERCIAL',
+    'HAL Old Airport': 'IT_CORRIDOR',
+    'City Market': 'TRANSIT_HUB',
+    'South Zone 1': 'IT_CORRIDOR',
+    'Central Zone 2': 'MIXED_RESIDENTIAL'
+}
 
 def get_deterministic_recommendations(severity: str, event_data: dict) -> dict:
     """Fallback deterministic rules if LLM fails or is not configured."""
@@ -14,7 +29,12 @@ def get_deterministic_recommendations(severity: str, event_data: dict) -> dict:
         "parking_management_required": False,
         "emergency_access_corridor": False,
         "tow_vehicle_required": False,
-        "crowd_control_team": False
+        "crowd_control_team": False,
+        "zone_archetype": "GENERAL",
+        "pcu_impact_score": 0,
+        "global_strategies": [],
+        "spatial_spillover_warning": False,
+        "nearest_poi_distance": ""
     }
 
     if severity == "Low":
@@ -57,13 +77,103 @@ def get_deterministic_recommendations(severity: str, event_data: dict) -> dict:
             recs["officers_required"] += 4
             recs["barricades_required"] += 5
 
+    # Implement Zone Archetyping
+    zone = str(event_data.get('zone', '')).strip()
+    recs["zone_archetype"] = ZONE_ARCHETYPES.get(zone, "GENERAL")
+
+    # Implement PCU Impact Estimation based on severity and attendance
+    base_pcu = 10 if severity == "Low" else 30 if severity == "Medium" else 60 if severity == "High" else 100
+    recs["pcu_impact_score"] = base_pcu + (attendance / 500 if attendance else 0)
+
+    # Implement Global Urban Planning Strategies Engine
+    strategies = []
+    
+    # 1. SFpark Tow Priority (High PCU)
+    if recs["pcu_impact_score"] > 80:
+        strategies.append("DEPLOY_TOW_TRUCK_SF_MODEL")
+
+    # 2. Indonesia Push-Pull (IT Corridors)
+    if recs["zone_archetype"] in ['IT_CORRIDOR', 'TRANSIT_HUB']:
+        strategies.append("PARK_AND_RIDE_DIVERSION")
+
+    # 3. Barcelona Superblock (Weekends / Festivals)
+    if "festival" in cause or "public_event" in cause:
+        strategies.append("TEMPORARY_SUPERBLOCK")
+
+    # 4. Vietnam Model Ward (Critical severity / high priority)
+    if severity == "Critical":
+        strategies.append("ACTIVATE_MODEL_WARD")
+
+    # 5. Taipei Scooter Zoning / Bangkok Win System (if accident or vehicle breakdown in tight zones)
+    if "accident" in cause or "vehicle_breakdown" in cause:
+        if recs["zone_archetype"] == 'CBD_COMMERCIAL':
+            strategies.append("DESIGNATE_SCOOTER_ZONE")
+        else:
+            strategies.append("CREATE_AUTO_STAND")
+
+    recs["global_strategies"] = strategies
+
+    if recs["pcu_impact_score"] > 50:
+        recs["spatial_spillover_warning"] = True
+
+    # Implement Haversine Distance to mock POI (Majestic Metro Station at 12.9716, 77.5946)
+    def haversine(lat1, lon1, lat2, lon2):
+        import math
+        R = 6371.0
+        dLat = math.radians(lat2 - lat1)
+        dLon = math.radians(lon2 - lon1)
+        a = math.sin(dLat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dLon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+
+    lat = event_data.get('latitude')
+    lng = event_data.get('longitude')
+    if lat and lng:
+        try:
+            dist = haversine(float(lat), float(lng), 12.9716, 77.5946)
+            recs["nearest_poi_distance"] = f"{dist:.1f} km from Central Metro"
+        except:
+            recs["nearest_poi_distance"] = "Unknown"
+
+    return recs
+
+CITY_MAX_OFFICERS = 300
+CITY_MAX_BARRICADES = 400
+
+def apply_resource_constraints(recs: dict, event_data: dict) -> dict:
+    """Treat available manpower as a strict constraint. Uses a greedy approach to allocate resources."""
+    db = SessionLocal()
+    try:
+        # Sum currently deployed resources for ACTIVE incidents
+        active_incidents = db.query(Incident).filter(Incident.status == IncidentStatus.ACTIVE).all()
+        deployed_officers = sum(i.officers_required for i in active_incidents if i.officers_required)
+        deployed_barricades = sum(i.barricades_required for i in active_incidents if i.barricades_required)
+        
+        available_officers = max(0, CITY_MAX_OFFICERS - deployed_officers)
+        available_barricades = max(0, CITY_MAX_BARRICADES - deployed_barricades)
+
+        # Greedy allocation
+        requested_officers = recs["officers_required"]
+        requested_barricades = recs["barricades_required"]
+
+        # If we don't have enough, we clip the allocation to what's available
+        recs["officers_required"] = min(requested_officers, available_officers)
+        recs["barricades_required"] = min(requested_barricades, available_barricades)
+        
+        # Add constraint flags for the frontend to show warnings
+        recs["resource_constrained"] = (requested_officers > available_officers) or (requested_barricades > available_barricades)
+        recs["original_request"] = {"officers": requested_officers, "barricades": requested_barricades}
+        
+    finally:
+        db.close()
     return recs
 
 async def generate_recommendations(severity: str, event_data: dict) -> Dict[str, Any]:
     """Dynamically generates operational recommendations using an LLM based on context."""
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "your_openrouter_api_key_here":
         print("No valid OpenRouter key, falling back to deterministic recommendations.")
-        return get_deterministic_recommendations(severity, event_data)
+        raw_recs = get_deterministic_recommendations(severity, event_data)
+        return apply_resource_constraints(raw_recs, event_data)
 
     baseline = get_deterministic_recommendations(severity, event_data)
 
@@ -93,7 +203,12 @@ async def generate_recommendations(severity: str, event_data: dict) -> Dict[str,
         "parking_management_required": (boolean),
         "emergency_access_corridor": (boolean),
         "tow_vehicle_required": (boolean),
-        "crowd_control_team": (boolean)
+        "crowd_control_team": (boolean),
+        "zone_archetype": "{baseline['zone_archetype']}",
+        "pcu_impact_score": {baseline['pcu_impact_score']},
+        "global_strategies": {json.dumps(baseline['global_strategies'])},
+        "spatial_spillover_warning": {str(baseline['spatial_spillover_warning']).lower()},
+        "nearest_poi_distance": "{baseline['nearest_poi_distance']}"
     }}
     """
 
@@ -129,7 +244,8 @@ async def generate_recommendations(severity: str, event_data: dict) -> Dict[str,
                 if key not in recs:
                     recs[key] = defaults[key]
                     
-            return recs
+            return apply_resource_constraints(recs, event_data)
     except Exception as e:
         print(f"Error calling LLM for recommendations: {e}. Falling back.")
-        return get_deterministic_recommendations(severity, event_data)
+        raw_recs = get_deterministic_recommendations(severity, event_data)
+        return apply_resource_constraints(raw_recs, event_data)

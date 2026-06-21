@@ -72,10 +72,42 @@ export function AlertsPanel() {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/analytics/alerts`);
-      if (!res.ok) throw new Error('Failed to fetch alerts');
-      const data = await res.json();
-      const resData = Array.isArray(data) ? data : data.alerts || [];
+      const [alertsRes, surgesRes] = await Promise.all([
+         fetch(`${API_BASE}/analytics/alerts`).catch(() => null),
+         fetch(`${API_BASE}/analytics/surges`).catch(() => null)
+      ]);
+      
+      let resData: Alert[] = [];
+      if (alertsRes && alertsRes.ok) {
+         const data = await alertsRes.json();
+         resData = Array.isArray(data) ? data : data.alerts || [];
+      }
+
+      if (surgesRes && surgesRes.ok) {
+         const surgeData = await surgesRes.json();
+         if (Array.isArray(surgeData)) {
+            surgeData.forEach((s: any) => {
+               if (s.is_surge) {
+                  resData.push({
+                     id: `surge-${s.zone}`,
+                     severity: 'Critical',
+                     message: `SURGE DETECTED: Sudden spike in incident volume (${s.recent_count} recent incidents). Threshold breached.`,
+                     zone: s.zone,
+                     timestamp: new Date().toISOString(),
+                     type: 'SURGE_ALERT'
+                  });
+               }
+            });
+         }
+      }
+      
+      // Sort by severity (Critical first) then timestamp
+      resData.sort((a, b) => {
+        if (a.severity === 'Critical' && b.severity !== 'Critical') return -1;
+        if (b.severity === 'Critical' && a.severity !== 'Critical') return 1;
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+
       setAlerts(resData.slice(0, 12));
       setLastUpdated(new Date());
     } catch (err) {

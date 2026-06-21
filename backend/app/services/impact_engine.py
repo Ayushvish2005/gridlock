@@ -56,6 +56,25 @@ def get_rule_based_impact(event_data: dict) -> ImpactAssessment:
     if event_data.get('junction'): score += 10
     if str(event_data.get('event_type', '')).strip().lower() == "planned": score += 5
 
+    # Compound Conflict Detector (Infrastructure Stress Multiplier)
+    try:
+        from app.database.config import SessionLocal
+        from app.models.incident import Incident
+        db = SessionLocal()
+        construction_count = db.query(Incident).filter(
+            Incident.zone == event_data.get('zone'),
+            Incident.event_cause == 'construction',
+            Incident.status == 'ACTIVE'
+        ).count()
+        db.close()
+        
+        # Multiply risk based on construction density
+        if construction_count > 0:
+            multiplier = min(1.0 + (construction_count * 0.15), 2.5) # Max 2.5x
+            score = int(score * multiplier)
+    except Exception as e:
+        print(f"Compound conflict check failed: {e}")
+
     score = min(score, 100)
 
     # Map score to severity
