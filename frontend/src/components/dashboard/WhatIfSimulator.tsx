@@ -35,10 +35,10 @@ interface ScenarioData {
 
 function getSeverityClass(sev: string) {
   switch (sev?.toLowerCase()) {
-    case 'critical': return 'text-red-400 bg-red-500/10 border-red-500/30';
-    case 'high': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
-    case 'medium': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
-    default: return 'text-green-400 bg-green-500/10 border-green-500/30';
+    case 'critical': return 'text-red-700 bg-red-50 border-red-200';
+    case 'high': return 'text-orange-700 bg-orange-50 border-orange-200';
+    case 'medium': return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+    default: return 'text-green-700 bg-green-50 border-green-200';
   }
 }
 
@@ -57,27 +57,27 @@ function CompareValue({ a, b, label, icon: Icon, format }: {
   const fmt = format || ((v: number | string) => String(v));
 
   return (
-    <div className="grid grid-cols-3 gap-2 items-center py-2.5 border-b border-slate-700/30 last:border-0">
+    <div className="grid grid-cols-3 gap-2 items-center py-2.5 border-b border-slate-200 last:border-0">
       <div className="flex items-center gap-2">
         <Icon className="w-3.5 h-3.5 text-slate-500" />
-        <span className="text-xs text-slate-400">{label}</span>
+        <span className="text-xs text-slate-600">{label}</span>
       </div>
-      <div className={`text-center text-sm font-bold ${aHigher && a !== b ? 'text-red-400' : 'text-slate-200'}`}>
+      <div className={`text-center text-sm font-bold ${aHigher && a !== b ? 'text-red-600' : 'text-slate-800'}`}>
         {a !== undefined ? fmt(a) : '—'}
         {aHigher && a !== b && diff > 0 && (
-          <TrendingUp className="w-3 h-3 text-red-400 inline ml-1" />
+          <TrendingUp className="w-3 h-3 text-red-600 inline ml-1" />
         )}
         {!aHigher && a !== b && diff > 0 && (
-          <TrendingDown className="w-3 h-3 text-green-400 inline ml-1" />
+          <TrendingDown className="w-3 h-3 text-green-600 inline ml-1" />
         )}
       </div>
-      <div className={`text-center text-sm font-bold ${!aHigher && a !== b ? 'text-red-400' : 'text-slate-200'}`}>
+      <div className={`text-center text-sm font-bold ${!aHigher && a !== b ? 'text-red-600' : 'text-slate-800'}`}>
         {b !== undefined ? fmt(b) : '—'}
         {!aHigher && a !== b && diff > 0 && (
-          <TrendingUp className="w-3 h-3 text-red-400 inline ml-1" />
+          <TrendingUp className="w-3 h-3 text-red-600 inline ml-1" />
         )}
         {aHigher && a !== b && diff > 0 && (
-          <TrendingDown className="w-3 h-3 text-green-400 inline ml-1" />
+          <TrendingDown className="w-3 h-3 text-green-600 inline ml-1" />
         )}
       </div>
     </div>
@@ -120,21 +120,21 @@ export function WhatIfSimulator() {
     }
   };
 
-  const inputCls = "w-full bg-slate-800/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all";
-  const labelCls = "block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider";
+  const inputCls = "w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all placeholder-slate-400";
+  const labelCls = "block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider";
 
   const scA: ScenarioData = result?.scenario_a || result?.a || {};
   const scB: ScenarioData = result?.scenario_b || result?.b || {};
 
   return (
-    <div className="glass rounded-xl border border-slate-700/50">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-700/50">
-        <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-          <GitCompare className="w-4 h-4 text-purple-400" />
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+        <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center">
+          <GitCompare className="w-4 h-4 text-purple-600" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">What-If Comparator</h3>
+          <h3 className="text-sm font-semibold text-slate-900">What-If Comparator</h3>
           <p className="text-xs text-slate-500">Compare two attendance scenarios side-by-side</p>
         </div>
       </div>
@@ -163,12 +163,12 @@ export function WhatIfSimulator() {
 
           {/* Scenario attendance side by side */}
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-blue-400">A</span>
+                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-blue-700">A</span>
                 </div>
-                <span className="text-xs font-semibold text-blue-400">Scenario A</span>
+                <span className="text-xs font-semibold text-blue-700">Scenario A</span>
               </div>
               <label className={labelCls}>Attendance</label>
               <input
@@ -179,12 +179,12 @@ export function WhatIfSimulator() {
                 onChange={e => setForm({ ...form, attendance_a: e.target.value })}
               />
             </div>
-            <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+            <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-purple-400">B</span>
+                <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-purple-700">B</span>
                 </div>
-                <span className="text-xs font-semibold text-purple-400">Scenario B</span>
+                <span className="text-xs font-semibold text-purple-700">Scenario B</span>
               </div>
               <label className={labelCls}>Attendance</label>
               <input
@@ -217,9 +217,9 @@ export function WhatIfSimulator() {
         </form>
 
         {error && (
-          <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-            <p className="text-xs text-red-400">{error}</p>
+          <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <p className="text-xs text-red-700">{error}</p>
           </div>
         )}
 
@@ -229,23 +229,23 @@ export function WhatIfSimulator() {
             <div className="grid grid-cols-3 gap-2 mb-2 px-1">
               <div></div>
               <div className="text-center">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200">
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-xs font-semibold text-blue-400">Scenario A</span>
+                  <span className="text-xs font-semibold text-blue-700">Scenario A</span>
                   <span className="text-[10px] text-slate-500">({parseInt(form.attendance_a).toLocaleString()})</span>
                 </div>
               </div>
               <div className="text-center">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-200">
                   <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                  <span className="text-xs font-semibold text-purple-400">Scenario B</span>
+                  <span className="text-xs font-semibold text-purple-700">Scenario B</span>
                   <span className="text-[10px] text-slate-500">({parseInt(form.attendance_b).toLocaleString()})</span>
                 </div>
               </div>
             </div>
 
             {/* Comparison table */}
-            <div className="bg-slate-800/40 rounded-xl border border-slate-700/40 p-3">
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
               <CompareValue
                 a={scA.risk_score ?? scA.impact_score}
                 b={scB.risk_score ?? scB.impact_score}

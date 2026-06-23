@@ -41,18 +41,18 @@ export function ScenarioSimulator({ onSimulate, selectedLocation }: SimulatorPro
     }
   };
 
-  const inputCls = "w-full bg-slate-800/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all placeholder-slate-600";
-  const labelCls = "block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider";
+  const inputCls = "w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all placeholder-slate-400";
+  const labelCls = "block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider";
 
   return (
-    <div className="glass rounded-xl border border-slate-700/50 flex flex-col h-full">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-700/50">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
         <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
           <Cpu className="w-4 h-4 text-blue-400" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">Scenario Simulator</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Scenario Simulator</h3>
           <p className="text-xs text-slate-500">Model traffic impact before deployment</p>
         </div>
       </div>
@@ -84,8 +84,8 @@ export function ScenarioSimulator({ onSimulate, selectedLocation }: SimulatorPro
                 onClick={() => setFormData({ ...formData, event_type: 'planned', event_cause: 'concert' })}
                 className={`py-2.5 rounded-lg text-sm font-medium border transition-all duration-150 ${
                   formData.event_type === 'planned'
-                    ? 'bg-blue-600/30 border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/10'
-                    : 'bg-slate-800/60 border-slate-600/50 text-slate-400 hover:border-slate-500/70'
+                    ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm shadow-blue-500/10'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
                 📅 Planned Event
@@ -95,8 +95,8 @@ export function ScenarioSimulator({ onSimulate, selectedLocation }: SimulatorPro
                 onClick={() => setFormData({ ...formData, event_type: 'unplanned', event_cause: 'accident' })}
                 className={`py-2.5 rounded-lg text-sm font-medium border transition-all duration-150 ${
                   formData.event_type === 'unplanned'
-                    ? 'bg-red-600/20 border-red-500/40 text-red-300 shadow-lg shadow-red-500/10'
-                    : 'bg-slate-800/60 border-slate-600/50 text-slate-400 hover:border-slate-500/70'
+                    ? 'bg-red-50 border-red-200 text-red-700 shadow-sm shadow-red-500/10'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
                 🚨 Unplanned

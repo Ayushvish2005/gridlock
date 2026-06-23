@@ -1,6 +1,7 @@
 "use client"
 import { useState } from 'react';
 import { Activity, Clock, AlertTriangle, ChevronRight, Gauge } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -31,10 +32,10 @@ interface ForecastResult {
 
 function getSeverityColor(severity: string) {
   switch (severity?.toLowerCase()) {
-    case 'critical': return { text: 'text-red-400', glow: 'shadow-red-500/30', ring: 'border-red-500', score: 'text-red-400', bg: 'from-red-500/20' };
-    case 'high': return { text: 'text-orange-400', glow: 'shadow-orange-500/30', ring: 'border-orange-500', score: 'text-orange-400', bg: 'from-orange-500/20' };
-    case 'medium': return { text: 'text-yellow-400', glow: 'shadow-yellow-500/30', ring: 'border-yellow-400', score: 'text-yellow-400', bg: 'from-yellow-500/20' };
-    default: return { text: 'text-green-400', glow: 'shadow-green-500/30', ring: 'border-green-500', score: 'text-green-400', bg: 'from-green-500/20' };
+    case 'critical': return { text: 'text-rose-600' };
+    case 'high': return { text: 'text-orange-600' };
+    case 'medium': return { text: 'text-amber-600' };
+    default: return { text: 'text-emerald-600' };
   }
 }
 
@@ -42,26 +43,18 @@ function getScoreColor(score: number) {
   if (score >= 80) return '#ef4444';
   if (score >= 60) return '#f97316';
   if (score >= 40) return '#eab308';
-  return '#22c55e';
+  return '#10b981';
 }
 
 // SVG Arc Gauge
 function GaugeDisplay({ score, severity }: { score: number; severity: string }) {
   const normalizedScore = Math.min(100, Math.max(0, score));
   const strokeColor = getScoreColor(normalizedScore);
-  
-  // Arc path calculation (180-degree arc)
+
   const radius = 54;
   const cx = 80;
   const cy = 80;
-  const circumference = Math.PI * radius; // half circle
-  const progress = (normalizedScore / 100) * circumference;
-  
-  // Convert to SVG arc
-  const startAngle = -180;
-  const endAngle = 0;
-  const angle = startAngle + (normalizedScore / 100) * 180;
-  
+
   const polarToCartesian = (centerX: number, centerY: number, r: number, angleDeg: number) => {
     const angleRad = (angleDeg - 90) * (Math.PI / 180);
     return {
@@ -88,7 +81,7 @@ function GaugeDisplay({ score, severity }: { score: number; severity: string }) 
           <path
             d={bgArc}
             fill="none"
-            stroke="rgba(51,65,85,0.8)"
+            stroke="rgba(15,23,42,0.08)"
             strokeWidth="12"
             strokeLinecap="round"
           />
@@ -122,12 +115,12 @@ function GaugeDisplay({ score, severity }: { score: number; severity: string }) 
           <text x={cx} y={cy + 10} textAnchor="middle" fill={strokeColor} fontSize="22" fontWeight="800" fontFamily="Inter, sans-serif">
             {normalizedScore.toFixed(0)}
           </text>
-          <text x={cx} y={cx - 10} textAnchor="middle" fill="rgba(148,163,184,0.7)" fontSize="9" fontFamily="Inter, sans-serif">
+          <text x={cx} y={cx - 10} textAnchor="middle" fill="rgba(100,116,139,0.8)" fontSize="9" fontFamily="Inter, sans-serif">
             /100
           </text>
         </svg>
         {/* Labels */}
-        <div className="flex justify-between text-[9px] text-slate-600 -mt-2 px-3">
+        <div className="flex justify-between text-[9px] text-slate-400 -mt-2 px-3">
           <span>0</span>
           <span>50</span>
           <span>100</span>
@@ -135,7 +128,7 @@ function GaugeDisplay({ score, severity }: { score: number; severity: string }) 
       </div>
       <div className="mt-1 text-center">
         <span className={`text-lg font-bold ${getSeverityColor(severity).text}`}>{severity}</span>
-        <p className="text-xs text-slate-500 mt-0.5">Congestion Severity</p>
+        <p className="text-xs text-slate-400 mt-0.5">Congestion Severity</p>
       </div>
     </div>
   );
@@ -180,23 +173,23 @@ export function CongestionForecast() {
     }
   };
 
-  const inputCls = "w-full bg-slate-800/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all placeholder-slate-600";
-  const labelCls = "block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider";
+  const inputCls = "w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder-slate-400";
+  const labelCls = "block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider";
 
   return (
-    <div className="glass rounded-xl border border-slate-700/50 flex flex-col h-full">
+    <Card className="flex flex-col h-full shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-700/50">
-        <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-          <Gauge className="w-4 h-4 text-blue-400" />
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+        <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
+          <Gauge className="w-4 h-4 text-blue-500" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">Congestion Forecast</h3>
-          <p className="text-xs text-slate-500">AI-powered traffic impact prediction</p>
+          <h3 className="text-sm font-bold text-slate-800">Congestion Forecast</h3>
+          <p className="text-xs text-slate-400">AI-powered traffic impact prediction</p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="flex-1 overflow-y-auto p-5 light-scrollbar">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -237,7 +230,7 @@ export function CongestionForecast() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
           >
             {loading ? (
               <>
@@ -256,16 +249,16 @@ export function CongestionForecast() {
         </form>
 
         {error && (
-          <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-            <p className="text-xs text-red-400">{error}</p>
+          <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+            <p className="text-xs text-rose-600">{error}</p>
           </div>
         )}
 
         {result && !loading && (
           <div className="mt-5 space-y-4 animate-fade-in-up">
             {/* Gauge */}
-            <div className="flex justify-center p-4 bg-slate-800/40 rounded-xl border border-slate-700/40">
+            <div className="flex justify-center p-4 bg-slate-50 rounded-xl border border-slate-200">
               <GaugeDisplay
                 score={result.congestion_risk_score ?? result.congestion_score ?? result.impact_score ?? result.risk_score ?? 0}
                 severity={result.severity_prediction ?? result.severity ?? 'Unknown'}
@@ -275,42 +268,42 @@ export function CongestionForecast() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-2">
               {(result.peak_congestion_window || result.peak_window) && (
-                <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/40">
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Clock className="w-3 h-3 text-blue-400" />
+                    <Clock className="w-3 h-3 text-blue-500" />
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider">Peak Window</span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-200">{result.peak_congestion_window || result.peak_window}</span>
+                  <span className="text-xs font-semibold text-slate-700">{result.peak_congestion_window || result.peak_window}</span>
                 </div>
               )}
               {(result.expected_clearance_time || result.clearance_time) && (
-                <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/40">
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <ChevronRight className="w-3 h-3 text-green-400" />
+                    <ChevronRight className="w-3 h-3 text-emerald-500" />
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider">Clearance</span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-200">{result.expected_clearance_time || result.clearance_time}</span>
+                  <span className="text-xs font-semibold text-slate-700">{result.expected_clearance_time || result.clearance_time}</span>
                 </div>
               )}
               {result.confidence !== undefined && (
-                <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/40">
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Activity className="w-3 h-3 text-purple-400" />
+                    <Activity className="w-3 h-3 text-violet-500" />
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider">Confidence</span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-200">{(result.confidence * 100).toFixed(0)}%</span>
+                  <span className="text-xs font-semibold text-slate-700">{(result.confidence * 100).toFixed(0)}%</span>
                 </div>
               )}
             </div>
 
             {/* Recommended Actions */}
             {result.recommended_actions && result.recommended_actions.length > 0 && (
-              <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/40">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Recommended Actions</p>
                 <ul className="space-y-1">
                   {result.recommended_actions.map((action, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
-                      <ChevronRight className="w-3 h-3 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
+                      <ChevronRight className="w-3 h-3 text-indigo-500 mt-0.5 flex-shrink-0" />
                       {action}
                     </li>
                   ))}
@@ -320,6 +313,6 @@ export function CongestionForecast() {
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
