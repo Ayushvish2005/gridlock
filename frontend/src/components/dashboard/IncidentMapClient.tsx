@@ -164,7 +164,11 @@ export default function IncidentMapClient({ incidents, simResult, selectedLocati
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
-            if (data.route && data.route.length > 0) {
+            if (data.routes && data.routes.length > 0) {
+              data.routes.forEach((r: any) => {
+                routes.push(r.map((c: number[]) => ({lat: c[0], lng: c[1]})));
+              });
+            } else if (data.route && data.route.length > 0) {
               routes.push(data.route.map((c: number[]) => ({lat: c[0], lng: c[1]})));
             }
           }

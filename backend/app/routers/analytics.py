@@ -626,12 +626,12 @@ def get_routing(
         if closed_lat is not None and closed_lng is not None:
             closed_coords.append((closed_lat, closed_lng))
 
-        route = calculate_route(
+        routes = calculate_route(
             start_coords=(start_lat, start_lng),
             end_coords=(end_lat, end_lng),
             closed_coords=closed_coords
         )
-        return {"route": route}
+        return {"routes": routes}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

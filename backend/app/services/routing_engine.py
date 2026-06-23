@@ -108,7 +108,7 @@ def _fallback_route(
     start: Tuple[float, float],
     end: Tuple[float, float],
     closed_coords: List[Tuple[float, float]],
-) -> List[Tuple[float, float]]:
+) -> List[List[Tuple[float, float]]]:
     """
     Geometric fallback when OSMnx is unavailable.
     Returns a 2-3 point route that avoids blocked midpoints.
@@ -116,7 +116,7 @@ def _fallback_route(
     if start == end:
         if _coord_near_closure(start, closed_coords, radius_m=10.0):
             raise ValueError("No route found: start/end point is closed")
-        return [start]
+        return [[start]]
 
     # Check start/end blocked
     if _coord_near_closure(end, closed_coords, radius_m=10.0):
@@ -145,34 +145,42 @@ def _fallback_route(
         cl = closed_coords[0]
         # Calculate angle of the line
         angle = math.atan2(end[0] - start[0], end[1] - start[1])
-        # Perpendicular angle
-        perp_angle = angle + math.pi / 2
         
         # Determine detour distance based on distance between start and end
         dist = _haversine(start, end)
         detour_dist_deg = (dist * 0.15) / 111000.0 # roughly 15% of length
         detour_dist_deg = max(detour_dist_deg, 0.01) # min 1km detour
         
-        detour_lat = cl[0] + math.sin(perp_angle) * detour_dist_deg
-        detour_lon = cl[1] + math.cos(perp_angle) * detour_dist_deg
-        
-        # Add a few points to make it look smooth
-        pt1 = (start[0]*0.7 + detour_lat*0.3, start[1]*0.7 + detour_lon*0.3)
-        pt2 = (detour_lat, detour_lon)
-        pt3 = (end[0]*0.7 + detour_lat*0.3, end[1]*0.7 + detour_lon*0.3)
-        
-        return [start, pt1, pt2, pt3, end]
+        # Flank 1 (right)
+        perp_angle_1 = angle + math.pi / 2
+        detour_lat_1 = cl[0] + math.sin(perp_angle_1) * detour_dist_deg
+        detour_lon_1 = cl[1] + math.cos(perp_angle_1) * detour_dist_deg
+        pt1_1 = (start[0]*0.7 + detour_lat_1*0.3, start[1]*0.7 + detour_lon_1*0.3)
+        pt2_1 = (detour_lat_1, detour_lon_1)
+        pt3_1 = (end[0]*0.7 + detour_lat_1*0.3, end[1]*0.7 + detour_lon_1*0.3)
+        route_1 = [start, pt1_1, pt2_1, pt3_1, end]
+
+        # Flank 2 (left)
+        perp_angle_2 = angle - math.pi / 2
+        detour_lat_2 = cl[0] + math.sin(perp_angle_2) * detour_dist_deg
+        detour_lon_2 = cl[1] + math.cos(perp_angle_2) * detour_dist_deg
+        pt1_2 = (start[0]*0.7 + detour_lat_2*0.3, start[1]*0.7 + detour_lon_2*0.3)
+        pt2_2 = (detour_lat_2, detour_lon_2)
+        pt3_2 = (end[0]*0.7 + detour_lat_2*0.3, end[1]*0.7 + detour_lon_2*0.3)
+        route_2 = [end, pt3_2, pt2_2, pt1_2, start] # Opposite direction
+
+        return [route_1, route_2]
 
     mid_lat = (start[0] + end[0]) / 2.0
     mid_lon = (start[1] + end[1]) / 2.0
-    return [start, (mid_lat, mid_lon), end]
+    return [[start, (mid_lat, mid_lon), end]]
 
 
 def calculate_route(
     start_coords: Tuple[float, float],
     end_coords: Tuple[float, float],
     closed_coords: Optional[List[Tuple[float, float]]] = None,
-) -> List[Tuple[float, float]]:
+) -> List[List[Tuple[float, float]]]:
     """
     Compute an optimal diversion route from start_coords to end_coords,
     avoiding any nodes near closed_coords.
@@ -222,7 +230,7 @@ def calculate_route(
     if start_coords == end_coords:
         if _coord_near_closure(start_coords, closed_coords, radius_m=10.0):
             raise ValueError("No route found: start/end point is closed")
-        return [start_coords]
+        return [[start_coords]]
 
     if _coord_near_closure(start_coords, closed_coords, radius_m=10.0):
         raise ValueError("No route found: start is blocked/isolated")
@@ -290,7 +298,7 @@ def calculate_route(
             )
 
             if orig_node == dest_node:
-                result = [start_coords]
+                result = [[start_coords]]
                 _route_cache[cache_key] = result
                 return result
 
@@ -312,8 +320,8 @@ def calculate_route(
                 route[0] = start_coords
                 route[-1] = end_coords
 
-            _route_cache[cache_key] = route
-            return route
+            _route_cache[cache_key] = [route]
+            return [route]
 
         except (ValueError, TypeError):
             raise  # Re-raise validation errors
