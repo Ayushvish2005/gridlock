@@ -12,68 +12,29 @@ interface Incident {
   event_type?: string;
 }
 
-function getSeverityDot(severity: string): string {
+function getSeverity(severity: string): { dot: string; pill: string; badgeBg: string } {
   switch (severity?.toLowerCase()) {
-    case 'critical': return 'bg-red-500 shadow-red-500/50';
-    case 'high': return 'bg-orange-500 shadow-orange-500/50';
-    case 'medium': return 'bg-yellow-500 shadow-yellow-500/50';
-    default: return 'bg-green-500 shadow-green-500/50';
-  }
-}
-
-function getSeverityText(severity: string): string {
-  switch (severity?.toLowerCase()) {
-    case 'critical': return 'text-red-400';
-    case 'high': return 'text-orange-400';
-    case 'medium': return 'text-yellow-400';
-    default: return 'text-green-400';
+    case 'critical': return { dot: 'bg-rose-500', pill: 'bg-rose-50 text-rose-600 border-rose-200', badgeBg: 'bg-rose-50 text-rose-500' };
+    case 'high': return { dot: 'bg-orange-500', pill: 'bg-orange-50 text-orange-600 border-orange-200', badgeBg: 'bg-orange-50 text-orange-500' };
+    case 'medium': return { dot: 'bg-amber-500', pill: 'bg-amber-50 text-amber-600 border-amber-200', badgeBg: 'bg-amber-50 text-amber-500' };
+    default: return { dot: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-600 border-emerald-200', badgeBg: 'bg-emerald-50 text-emerald-500' };
   }
 }
 
 function getStatusConfig(status: string) {
   switch (status?.toUpperCase()) {
     case 'ACTIVE':
-      return {
-        label: 'Active',
-        className: 'bg-red-500/10 text-red-400 border-red-500/30',
-        icon: <Zap className="w-3 h-3" />,
-        pulse: true,
-      };
+      return { label: 'Active', className: 'bg-rose-50 text-rose-600 border-rose-200', icon: <Zap className="w-3 h-3" /> };
     case 'MONITORING':
-      return {
-        label: 'Monitoring',
-        className: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
-        icon: <AlertTriangle className="w-3 h-3" />,
-        pulse: false,
-      };
+      return { label: 'Monitoring', className: 'bg-orange-50 text-orange-600 border-orange-200', icon: <AlertTriangle className="w-3 h-3" /> };
     case 'RESOLVED':
-      return {
-        label: 'Resolved',
-        className: 'bg-green-500/10 text-green-400 border-green-500/30',
-        icon: <CheckCircle className="w-3 h-3" />,
-        pulse: false,
-      };
+      return { label: 'Resolved', className: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: <CheckCircle className="w-3 h-3" /> };
     case 'CANCELLED':
-      return {
-        label: 'Cancelled',
-        className: 'bg-slate-500/10 text-slate-400 border-slate-500/30',
-        icon: <XCircle className="w-3 h-3" />,
-        pulse: false,
-      };
+      return { label: 'Cancelled', className: 'bg-slate-100 text-slate-500 border-slate-200', icon: <XCircle className="w-3 h-3" /> };
     case 'PREDICTED':
-      return {
-        label: 'Simulated',
-        className: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-        icon: <Zap className="w-3 h-3" />,
-        pulse: true,
-      };
+      return { label: 'Simulated', className: 'bg-violet-50 text-violet-600 border-violet-200', icon: <Zap className="w-3 h-3" /> };
     default:
-      return {
-        label: status,
-        className: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-        icon: <Clock className="w-3 h-3" />,
-        pulse: false,
-      };
+      return { label: status, className: 'bg-blue-50 text-blue-600 border-blue-200', icon: <Clock className="w-3 h-3" /> };
   }
 }
 
@@ -104,7 +65,7 @@ export function IncidentTimeline({ incidents, simResult }: { incidents: Incident
   };
 
   let displayIncidents = [...(incidents || [])];
-  
+
   if (simResult) {
     displayIncidents.push({
       id: 'sim-' + Date.now(),
@@ -126,123 +87,107 @@ export function IncidentTimeline({ incidents, simResult }: { incidents: Incident
   });
 
   return (
-    <div className="glass rounded-xl border border-slate-700/50 flex flex-col h-full">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-            <Clock className="w-4 h-4 text-blue-400" />
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">Incident Timeline</h3>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-50 border border-rose-200">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600">Live</span>
+            </span>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-200">Incident Timeline</h3>
-            <p className="text-xs text-slate-500">Sorted by most recent</p>
-          </div>
+          <p className="text-xs text-slate-400 mt-0.5">Network activity stream</p>
         </div>
-        <span className="text-xs text-slate-500 bg-slate-800/60 border border-slate-700/40 px-2.5 py-1 rounded-full">
+        <span className="text-xs font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
           {sorted.length} active
         </span>
       </div>
 
-      {/* Timeline */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Feed */}
+      <div className="flex-1 overflow-y-auto p-4 light-scrollbar">
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-400" />
+            <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
             </div>
-            <p className="text-xs text-slate-500">No incidents to display</p>
+            <p className="text-xs text-slate-400">No incidents to display</p>
           </div>
         ) : (
-          <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-[15px] top-0 bottom-0 w-px bg-gradient-to-b from-blue-500/30 via-slate-600/20 to-transparent" />
+          <div className="space-y-2.5">
+            {sorted.map((incident, i) => {
+              const statusCfg = getStatusConfig(incident.status);
+              const isActive = incident.status?.toUpperCase() === 'ACTIVE';
+              const sev = getSeverity(incident.severity);
 
-            <div className="space-y-0">
-              {sorted.map((incident, i) => {
-                const statusCfg = getStatusConfig(incident.status);
-                const isActive = incident.status?.toUpperCase() === 'ACTIVE';
-                const dotColor = getSeverityDot(incident.severity);
-                const textColor = getSeverityText(incident.severity);
+              return (
+                <div
+                  key={incident.id || i}
+                  className="flex gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:shadow-md hover:border-slate-300 transition-all duration-200 animate-fade-in-up"
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  {/* Icon badge */}
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${sev.badgeBg}`}>
+                    {incident.status?.toUpperCase() === 'RESOLVED'
+                      ? <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      : <span className={`w-2.5 h-2.5 rounded-full ${sev.dot}`}></span>}
+                  </div>
 
-                return (
-                  <div
-                    key={incident.id || i}
-                    className="relative flex gap-4 pl-10 pb-4 animate-fade-in-up"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    {/* Dot */}
-                    <div className="absolute left-0 top-1 flex items-center justify-center">
-                      {isActive || incident.status === 'PREDICTED' ? (
-                        <span className="relative flex h-[30px] w-[30px]">
-                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotColor.split(' ')[0]} opacity-30`}></span>
-                          <span className={`relative inline-flex rounded-full h-[30px] w-[30px] ${dotColor.split(' ')[0]}/20 border-2 border-${dotColor.split(' ')[0].replace('bg-', '')} items-center justify-center`}>
-                            <span className={`w-2 h-2 rounded-full ${dotColor.split(' ')[0]} shadow-sm ${dotColor.split(' ')[1] || ''}`}></span>
-                          </span>
+                  {/* Body */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${sev.pill}`}>
+                          {incident.severity}
                         </span>
-                      ) : (
-                        <div className={`w-[30px] h-[30px] rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center`}>
-                          {incident.status?.toUpperCase() === 'RESOLVED'
-                            ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                            : <span className={`w-2 h-2 rounded-full ${dotColor.split(' ')[0]}`}></span>
-                          }
-                        </div>
-                      )}
+                        <span className="text-sm font-semibold text-slate-800 capitalize truncate">
+                          {incident.event_cause?.replace(/_/g, ' ')}
+                        </span>
+                        {incident.event_type && (
+                          <span className="text-[10px] text-slate-400 uppercase">({incident.event_type})</span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-400 whitespace-nowrap mt-0.5">{formatRelativeTime(incident.created_at)}</span>
                     </div>
 
-                    {/* Content card */}
-                    <div className="flex-1 p-3 rounded-lg bg-slate-800/40 border border-slate-700/40 hover:border-slate-600/60 transition-colors duration-200">
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div>
-                          <span className="text-sm font-semibold text-slate-200 capitalize">
-                            {incident.event_cause?.replace(/_/g, ' ')}
-                          </span>
-                          {incident.event_type && (
-                            <span className="ml-2 text-[10px] text-slate-500 uppercase">
-                              ({incident.event_type})
-                            </span>
-                          )}
+                    <div className="flex items-center justify-between gap-2 mt-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-1 text-xs text-slate-500 truncate">
+                          <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                          {incident.zone}
                         </div>
-                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${statusCfg.className}`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${statusCfg.className}`}>
                           {statusCfg.icon}
                           {statusCfg.label}
-                        </div>
+                        </span>
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1 text-xs text-slate-400">
-                            <MapPin className="w-3 h-3 text-slate-500" />
-                            {incident.zone}
-                          </div>
-                          <span className={`text-xs font-semibold ${textColor}`}>
-                            {incident.severity}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {isActive && !incident.id.toString().startsWith('sim-') && (
-                            <button 
-                              onClick={(e) => handleResolve(e, incident.id)}
-                              className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30 hover:bg-green-500/30 transition-colors"
-                            >
-                              Resolve
-                            </button>
-                          )}
-                          {incident.status?.toUpperCase() === 'RESOLVED' && !incident.id.toString().startsWith('sim-') && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('view-report', { detail: { id: incident.id } })); }}
-                              className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
-                            >
-                              View Report
-                            </button>
-                          )}
-                          <span className="text-[10px] text-slate-600">{formatRelativeTime(incident.created_at)}</span>
-                        </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isActive && !incident.id.toString().startsWith('sim-') && (
+                          <button
+                            onClick={(e) => handleResolve(e, incident.id)}
+                            className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                          >
+                            Resolve
+                          </button>
+                        )}
+                        {incident.status?.toUpperCase() === 'RESOLVED' && !incident.id.toString().startsWith('sim-') && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('view-report', { detail: { id: incident.id } })); }}
+                            className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                          >
+                            View Report
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
