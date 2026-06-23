@@ -4,6 +4,13 @@ Gridlock AI is an enterprise-grade, AI-powered Traffic Operations Platform desig
 
 ---
 
+## 🎥 Video Demo & Live Links
+
+- **Full Project Demo (Loom):** [Watch the 5-Minute Demo](https://www.loom.com/share/1807672319e64ed1aad3af08e2f3c92d)
+- **Live Frontend Dashboard:** [https://gridlock-olive.vercel.app/](https://gridlock-olive.vercel.app/)
+
+---
+
 ## 📸 Screenshots
 
 | Tactical Dashboard Overview | What-If Simulator |
